@@ -1320,7 +1320,6 @@
         // Call on DOM Load
         document.addEventListener('DOMContentLoaded', initFlavorInventoryRows);
         
-        // Submit Complete Form Data to Firebase
         function handleSalesSubmit(e) {
             e.preventDefault();
         
@@ -1342,11 +1341,14 @@
                 };
             });
         
-            // 2. Build Payload
+            // 2. Build Payload (Includes totalDailySales)
             const salesReportPayload = {
                 submittedBy: user.displayName || user.email.split('@')[0],
                 userEmail: currentUserEmail,
                 timestamp: firebase.database.ServerValue.TIMESTAMP,
+        
+                // --- ADD THIS LINE TO STORE THE TOTAL IN FIREBASE ---
+                totalDailySales: calculateTotalDailySales(), 
         
                 // General Info
                 cawangan: document.getElementById('salesCawangan').value,
@@ -1394,6 +1396,10 @@
                 showToast("Daily sales report submitted successfully!");
                 document.getElementById('dailySalesForm').reset();
                 initFlavorInventoryRows();
+                
+                // Reset displayed total
+                const displayEl = document.getElementById('totalDailySalesDisplay');
+                if (displayEl) displayEl.textContent = 'RM 0.00';
             }).catch(err => {
                 showToast(err.message, "error");
             });
