@@ -1144,8 +1144,15 @@
             }
         }
         
-        // Ensure Firebase Storage is initialized at the top of your script
-        const storage = firebase.storage();
+        // Helper to convert File object to Base64 string
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = (error) => reject(error);
+            });
+        }
         
         async function handleLeaveSubmit(e) {
             e.preventDefault();
@@ -1161,10 +1168,10 @@
             const reason = document.getElementById('leaveReason').value;
             const fileInput = document.getElementById('mcFile');
         
-            let mcFileUrl = null;
+            let mcBase64Data = null;
             let fileName = null;
         
-            // Handle Medical Certificate Upload
+            // Handle Medical Certificate Conversion
             if (leaveType === 'medical') {
                 const file = fileInput.files[0];
                 if (!file) {
@@ -1172,27 +1179,24 @@
                     return;
                 }
         
+                // Limit file size to 1MB max for Realtime DB performance
+                if (file.size > 1024 * 1024) {
+                    showToast("File size too large! Maximum allowed is 1MB.", "error");
+                    return;
+                }
+        
                 try {
-                    showToast("Uploading MC document...", "info");
-                    
-                    // Generate unique path in Storage
-                    const timestamp = Date.now();
-                    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-                    const fileRef = storage.ref(`mc_documents/${timestamp}_${cleanFileName}`);
-        
-                    // Upload File & Get Download URL
-                    const snapshot = await fileRef.put(file);
-                    mcFileUrl = await snapshot.ref.getDownloadURL();
+                    showToast("Processing MC document...", "info");
+                    mcBase64Data = await fileToBase64(file); // Converts image/PDF to data:image/... string
                     fileName = file.name;
-        
                 } catch (error) {
-                    console.error("Storage Upload Error:", error);
-                    showToast("File upload failed: " + error.message, "error");
+                    console.error("Base64 Error:", error);
+                    showToast("Failed to process file.", "error");
                     return;
                 }
             }
         
-            // Prepare Request Record for Realtime Database
+            // Prepare Record
             const leaveRequest = {
                 empName: user.displayName || user.email.split('@')[0],
                 empId: user.uid.substring(0, 8).toUpperCase(),
@@ -1202,13 +1206,13 @@
                 endDate,
                 reason,
                 hasAttachment: leaveType === 'medical',
-                mcFileUrl: mcFileUrl,         // Link for Admin Dashboard preview
-                mcFileName: fileName,         // Original file name
-                status: 'PENDING',            // PENDING -> APPROVED / REJECTED by Admin
+                mcBase64: mcBase64Data,        // Stored directly as text string in Database
+                mcFileName: fileName,
+                status: 'PENDING',
                 appliedAt: firebase.database.ServerValue.TIMESTAMP
             };
         
-            // Save to Firebase Realtime Database
+            // Push directly to Realtime DB
             db.ref('leave_requests').push(leaveRequest).then(() => {
                 showToast("Leave application submitted successfully!");
                 closeLeaveModal();
