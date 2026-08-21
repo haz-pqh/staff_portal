@@ -412,7 +412,12 @@
 
             if (user) {
                 currentUserEmail = (user.email || '').toLowerCase();
-
+        
+                // Initialize presence tracking for signed-in staff
+                setupPresenceSystem(user);
+        
+                initDatabaseListeners();
+                
                 if (!ALLOWED_EMAILS.includes(currentUserEmail)) {
                     auth.signOut().then(() => {
                         showToast(`Access Denied: ${currentUserEmail} is not authorized.`, 'error');
@@ -544,7 +549,7 @@
             if (!timerEl) return;
         
             if (activeSession && activeSession.clockInTime) {
-                // --- ON DUTY STATE (Green-Yellow / Lime Highlight) ---
+                // --- ON DUTY STATE (Lime / Green-Yellow Highlight) ---
                 const elapsedMs = Math.max(0, now - new Date(activeSession.clockInTime));
                 const hrs = String(Math.floor(elapsedMs / 3600000)).padStart(2, '0');
                 const mins = String(Math.floor((elapsedMs % 3600000) / 60000)).padStart(2, '0');
@@ -567,7 +572,7 @@
                 }
         
             } else {
-                // --- OFF DUTY STATE (Continuous Clock in Muted Slate) ---
+                // --- ONLINE STATE (App Active / Off Duty) ---
                 const hrs = String(now.getHours()).padStart(2, '0');
                 const mins = String(now.getMinutes()).padStart(2, '0');
                 const secs = String(now.getSeconds()).padStart(2, '0');
@@ -579,8 +584,8 @@
                 if (statusText) statusText.textContent = "OFF DUTY • Ready to clock in";
         
                 if (statusBadge) {
-                    statusBadge.textContent = "OFFLINE";
-                    statusBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700";
+                    statusBadge.textContent = "ONLINE";
+                    statusBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
                 }
         
                 if (clockBtn) {
