@@ -363,23 +363,16 @@
                     </form>
                 </div>
 
-                <!-- Sales History Table -->
-                <div class="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
-                    <div class="p-6 border-b border-slate-800">
-                        <h3 class="text-base font-semibold text-white">Submitted Sales History</h3>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs text-slate-300">
-                            <thead class="bg-slate-950/60 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                                <tr>
-                                    <th class="py-3.5 px-6">Date</th>
-                                    <th class="py-3.5 px-6">Submitted By</th>
-                                    <th class="py-3.5 px-6">Amount</th>
-                                    <th class="py-3.5 px-6">Notes</th>
-                                </tr>
-                            </thead>
-                            <tbody id="salesTableBody" class="divide-y divide-slate-800/60"></tbody>
-                        </table>
+                <!-- Live Total Sales Summary Card -->
+                <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-5 mb-6 shadow-xl">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div>
+                            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider block">Real-time Calculation</span>
+                            <h4 class="text-lg font-black text-white">Estimated Grand Total Daily Sales</h4>
+                        </div>
+                        <div class="text-right">
+                            <span id="totalDailySalesDisplay" class="font-mono text-3xl font-black text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">RM 0.00</span>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1203,7 +1196,126 @@
         
             // Set auto calculated value
             soldInput.value = sold;
+        
+            // Trigger Live Grand Total Recalculation
+            if (typeof calculateTotalDailySales === 'function') {
+                calculateTotalDailySales();
+            }
         }
+
+        // Unit Prices & Pricing Rules Constants
+        const PRICING = {
+            AYAM_PER_PC: 4.50,          // 1 Bag = 20 pcs * RM4.50 = RM90.00
+            BAG_PCS: 20,
+            MINYAK_MASAK_PACK: 5.00,    // RM5.00 / pack
+            CKG_CUP: 2.00,              // Cheese, Korean, Garlic = RM2.00 / cup
+            TF_CUP: 3.00,               // Furikake, Togarashi = RM3.00 / cup
+            COLESLAW_SINGLE: 3.50,      // 1 Cup Coleslaw = RM3.50
+            COLESLAW_PAIR: 6.50,        // 2 Cups Coleslaw Combo = RM6.50
+            PROMO_10PCS: 53.90          // Promo 10 Pcs Ayam = RM53.90 / promo
+        };
+        
+        // 1. Calculate Flavor Sales Subtotals
+        function getFlavorSalesSubtotals() {
+            // CKG Total (Cheese, Korean, Garlic)
+            const ckgItems = ['Cheese', 'Korean', 'Garlic'];
+            let ckgSoldTotal = 0;
+            ckgItems.forEach(item => {
+                ckgSoldTotal += parseFloat(document.querySelector(`input[data-item="${item}"][data-col="sold"]`)?.value || 0);
+            });
+            const ckgTotalSale = ckgSoldTotal * PRICING.CKG_CUP;
+        
+            // T&F Total (Furikake, Togarashi)
+            const tfItems = ['Furikake', 'Togarashi'];
+            let tfSoldTotal = 0;
+            tfItems.forEach(item => {
+                tfSoldTotal += parseFloat(document.querySelector(`input[data-item="${item}"][data-col="sold"]`)?.value || 0);
+            });
+            const tfTotalSale = tfSoldTotal * PRICING.TF_CUP;
+        
+            // Coleslaw Combo Pricing Calculation (RM6.50 per 2 cups + RM3.50 for remainder)
+            const coleslawSold = parseFloat(document.querySelector(`input[data-item="Coleslaw"][data-col="sold"]`)?.value || 0);
+            const coleslawPairs = Math.floor(coleslawSold / 2);
+            const coleslawSingles = coleslawSold % 2;
+            const coleslawTotalSale = (coleslawPairs * PRICING.COLESLAW_PAIR) + (coleslawSingles * PRICING.COLESLAW_SINGLE);
+        
+            return { ckgTotalSale, tfTotalSale, coleslawTotalSale };
+        }
+        
+        // 2. Main Grand Total Calculation Function
+        function calculateTotalDailySales() {
+            // --- A. Base Chicken Revenue ---
+            const bagInput = document.getElementById('salesJumlahBag')?.value || '';
+            const bagsCount = parseFloat(bagInput.match(/\d+/)?.[0] || 0);
+            const chickenSales = bagsCount * PRICING.BAG_PCS * PRICING.AYAM_PER_PC;
+        
+            // --- B. Platform Revenue ---
+            const misi = parseFloat(document.getElementById('salesMisi')?.value || 0);
+            const lalamove = parseFloat(document.getElementById('salesLalamove')?.value || 0);
+            
+            // Parse FoodPanda value even if entered with quantity e.g. "178.75 (4)"
+            const fpRaw = document.getElementById('salesFoodPanda')?.value || '0';
+            const foodPanda = parseFloat(fpRaw.match(/[\d.]+/)?.[0] || 0);
+        
+            const grabFood = parseFloat(document.getElementById('salesGrabFood')?.value || 0);
+            const shopeeFood = parseFloat(document.getElementById('salesShopeeFood')?.value || 0);
+        
+            // --- C. Expenses & Deductions ---
+            const gas = parseFloat(document.getElementById('expGas')?.value || 0);
+            const ais = parseFloat(document.getElementById('expAis')?.value || 0);
+            const beliBarang = parseFloat(document.getElementById('expBeliBarang')?.value || 0);
+            const minyakKenderaan = parseFloat(document.getElementById('expMinyakKenderaan')?.value || 0);
+            const dobi = parseFloat(document.getElementById('expDobi')?.value || 0);
+        
+            // Minyak Masak (Packs * RM5.00)
+            const minyakMasakPacks = parseFloat(document.getElementById('expMinyakMasak')?.value || 0);
+            const minyakMasakExpense = minyakMasakPacks * PRICING.MINYAK_MASAK_PACK;
+        
+            // Staff Meal (2 pcs chicken per staff @ RM4.50/pc = RM9.00 per staff)
+            const staffMealInput = document.getElementById('expStaffMeal')?.value || '';
+            const staffCount = (staffMealInput.match(/\d+/g) || []).length; 
+            const staffMealExpense = staffCount * (2 * PRICING.AYAM_PER_PC);
+        
+            // --- D. Chicken Losses & Quality Deductions (pcs * RM4.50) ---
+            const ayamTakHabisPcs = parseFloat(document.getElementById('wasteAyamTakHabis')?.value || 0);
+            const ayamBusukPcs = parseFloat(document.getElementById('wasteAyamBusuk')?.value || 0);
+            const ayamShortPcs = parseFloat(document.getElementById('wasteAyamShort')?.value || 0);
+            const reviewPcs = parseFloat(document.getElementById('qReview')?.value || 0);
+        
+            const lossDeductions = (ayamTakHabisPcs + ayamBusukPcs + ayamShortPcs + reviewPcs) * PRICING.AYAM_PER_PC;
+            const loyalKadDeduction = parseFloat(document.getElementById('qLoyalKad')?.value || 0);
+        
+            const totalExpenses = gas + ais + beliBarang + minyakKenderaan + dobi + minyakMasakExpense + staffMealExpense + lossDeductions + loyalKadDeduction;
+        
+            // --- E. Flavor Inventory Sales ---
+            const { ckgTotalSale, tfTotalSale, coleslawTotalSale } = getFlavorSalesSubtotals();
+        
+            // --- F. Promo Sales ---
+            const promo10PcsCount = parseFloat(document.getElementById('qPromo10Pcs')?.value || 0);
+            const promoSales = promo10PcsCount * PRICING.PROMO_10PCS;
+        
+            // --- GRAND TOTAL FORMULA ---
+            const grandTotal = (chickenSales + misi + lalamove + foodPanda + grabFood + shopeeFood)
+                - totalExpenses
+                + ckgTotalSale + tfTotalSale + coleslawTotalSale
+                + promoSales;
+        
+            // Update Live Display
+            const displayEl = document.getElementById('totalDailySalesDisplay');
+            if (displayEl) {
+                displayEl.textContent = `RM ${grandTotal.toFixed(2)}`;
+            }
+        
+            return grandTotal;
+        }
+        
+        // 3. Attach Event Listeners for Live Updates across the whole form
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('dailySalesForm');
+            if (form) {
+                form.addEventListener('input', calculateTotalDailySales);
+            }
+        });
         
         // Call on DOM Load
         document.addEventListener('DOMContentLoaded', initFlavorInventoryRows);
