@@ -217,7 +217,7 @@
                     <h3 class="text-base font-semibold text-white mb-1 flex items-center gap-2">
                         <i class="fa-solid fa-chart-line text-indigo-400"></i> Submit Daily Sales Update
                     </h3>
-                    <p class="text-xs text-slate-400 mb-6">Record today's sales figure directly into the system database.</p>
+                    <p class="text-xs text-slate-400 mb-6">Record today's sales figure directly into the system database (strictly 1 entry per date).</p>
 
                     <form onsubmit="handleSalesSubmit(event)" class="space-y-4">
                         <div>
@@ -648,12 +648,19 @@
             document.getElementById('myTotalHours').textContent = `${(totalMs / 3600000).toFixed(1)} hrs`;
         }
 
-        // Sales Functionality
+        // Sales Functionality with "Once Per Day" Rule
         function handleSalesSubmit(e) {
             e.preventDefault();
             const date = document.getElementById('salesDate').value;
             const amount = parseFloat(document.getElementById('salesAmount').value);
             const notes = document.getElementById('salesNotes').value.trim();
+
+            // RULE: Prevent duplicate submissions for the same date
+            const existingEntry = salesLogs.find(s => s.date === date);
+            if (existingEntry) {
+                showToast(`Daily sale for ${date} was already submitted by ${existingEntry.submittedBy}.`, 'error');
+                return;
+            }
 
             const newSalesRef = db.ref('daily_sales').push();
             newSalesRef.set({
@@ -661,7 +668,8 @@
                 date,
                 amount,
                 notes: notes || 'N/A',
-                submittedBy: auth.currentUser ? (auth.currentUser.displayName || auth.currentUser.email) : 'Staff'
+                submittedBy: auth.currentUser ? (auth.currentUser.displayName || auth.currentUser.email) : 'Staff',
+                userEmail: currentUserEmail
             }).then(() => {
                 showToast("Daily sales report submitted!");
                 document.getElementById('salesAmount').value = '';
