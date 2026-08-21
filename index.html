@@ -128,28 +128,58 @@
                 </div>
             </section>
 
-            <!-- TAB 2: ATTENDANCE TRACKER (Current User Only) -->
+            <!-- TAB 2: ATTENDANCE TRACKER (Grid Calendar UI) -->
             <section id="tab-attendance" class="tab-content space-y-6 hidden">
-                <div class="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-xl p-6">
+                <div class="max-w-xl mx-auto bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl">
                     
-                    <!-- Header & Actions -->
-                    <div class="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-800/80">
+                    <!-- Header Actions -->
+                    <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
                         <div>
                             <h3 class="text-base font-semibold text-white flex items-center gap-2">
-                                <i class="fa-solid fa-calendar-days text-indigo-400 text-sm"></i> My Attendance History
+                                <i class="fa-solid fa-calendar-days text-indigo-400 text-sm"></i> Attendance Calendar
                             </h3>
-                            <p class="text-xs text-slate-400 mt-0.5">Showing attendance entries exclusively for your account</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Select a date to view logged shift details</p>
                         </div>
-                        <button onclick="exportCSV()" class="px-3.5 py-2 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition flex items-center gap-2">
-                            <i class="fa-solid fa-file-csv text-indigo-400"></i> Export CSV
+                        <button onclick="exportCSV()" class="px-3 py-1.5 text-xs font-semibold text-slate-300 bg-slate-800/80 hover:bg-slate-700 rounded-xl border border-slate-700 transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv text-indigo-400"></i> Export
                         </button>
                     </div>
 
-                    <!-- Attendance Calendar Cards Container -->
-                    <div id="myAttendanceList" class="mt-6 space-y-3">
-                        <!-- Dynamic Calendar Entries Inject Here -->
+                    <!-- Month Navigation Bar -->
+                    <div class="flex items-center justify-between my-4 px-2">
+                        <button onclick="changeMonth(-1)" class="w-8 h-8 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-slate-300 flex items-center justify-center transition active:scale-95">
+                            <i class="fa-solid fa-chevron-left text-xs"></i>
+                        </button>
+                        
+                        <h4 id="calendarMonthYear" class="text-sm font-bold text-white tracking-wide">August 2026</h4>
+                        
+                        <button onclick="changeMonth(1)" class="w-8 h-8 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-slate-300 flex items-center justify-center transition active:scale-95">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </button>
                     </div>
 
+                    <!-- Calendar Days Header (sun - sat) -->
+                    <div class="grid grid-cols-7 gap-1 text-center mb-2">
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">sun</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">mon</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">tue</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">wed</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">thu</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">fri</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">sat</span>
+                    </div>
+
+                    <!-- Dynamic Date Grid -->
+                    <div id="calendarGrid" class="grid grid-cols-7 gap-1.5 text-center"></div>
+                </div>
+
+                <!-- Details Box for Selected Date -->
+                <div class="max-w-xl mx-auto bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-400" id="selectedDateLabel">Selected Date Details</h4>
+                        <button onclick="clearDateFilter()" class="text-[10px] text-slate-400 hover:text-white underline">Show All Records</button>
+                    </div>
+                    <div id="selectedDateLogs" class="space-y-2"></div>
                 </div>
             </section>
 
@@ -527,6 +557,124 @@
                     showToast(`Clocked out. Duration: ${hrs}h ${mins}m`);
                 });
             }
+        }
+
+        let currentViewDate = new Date();
+        let filterDateString = null;
+
+        // Call inside initDatabaseListeners or renderAttendanceUI
+        function renderAttendanceUI() {
+            renderCalendarGrid();
+            renderSelectedDateLogs();
+        }
+
+        function changeMonth(offset) {
+            currentViewDate.setMonth(currentViewDate.getMonth() + offset);
+            renderAttendanceUI();
+        }
+
+        function selectDate(dateStr) {
+            filterDateString = dateStr;
+            renderAttendanceUI();
+        }
+
+        function clearDateFilter() {
+            filterDateString = null;
+            renderAttendanceUI();
+        }
+
+        function renderCalendarGrid() {
+            const grid = document.getElementById('calendarGrid');
+            const monthYearLabel = document.getElementById('calendarMonthYear');
+            grid.innerHTML = '';
+
+            const year = currentViewDate.getFullYear();
+            const month = currentViewDate.getMonth();
+
+            // Display formatted Month & Year
+            monthYearLabel.textContent = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+            const prevMonthDays = new Date(year, month, 0).getDate();
+
+            // User logs mapped for comparison
+            const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
+
+            // 1. Render Previous Month Padding Days
+            for (let i = firstDayIndex; i > 0; i--) {
+                const dayNum = prevMonthDays - i + 1;
+                const cell = document.createElement('div');
+                cell.className = 'h-10 flex flex-col items-center justify-center text-xs text-slate-700 pointer-events-none';
+                cell.textContent = dayNum;
+                grid.appendChild(cell);
+            }
+
+            // 2. Render Current Month Days
+            for (let day = 1; day <= totalDaysInMonth; day++) {
+                const dateObj = new Date(year, month, day);
+                // Format YYYY-MM-DD or MM/DD/YYYY to match database log dates
+                const dateString = dateObj.toLocaleDateString();
+                
+                const hasLog = myLogs.some(log => new Date(log.date).toDateString() === dateObj.toDateString());
+                const isSelected = filterDateString && new Date(filterDateString).toDateString() === dateObj.toDateString();
+
+                const button = document.createElement('button');
+                button.onclick = () => selectDate(dateObj.toISOString());
+
+                // Styling based on state (Active selected vs normal)
+                if (isSelected) {
+                    button.className = 'h-10 w-10 mx-auto rounded-full bg-indigo-600 text-white font-bold text-xs flex flex-col items-center justify-center shadow-lg shadow-indigo-600/40 relative transition-transform active:scale-95';
+                } else {
+                    button.className = 'h-10 w-10 mx-auto rounded-xl hover:bg-slate-800/80 text-slate-200 font-medium text-xs flex flex-col items-center justify-center relative transition active:scale-95';
+                }
+
+                button.innerHTML = `
+                    <span>${day}</span>
+                    ${hasLog ? `<span class="w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-indigo-400'} absolute bottom-1.5"></span>` : ''}
+                `;
+
+                grid.appendChild(button);
+            }
+        }
+
+        function renderSelectedDateLogs() {
+            const container = document.getElementById('selectedDateLogs');
+            const label = document.getElementById('selectedDateLabel');
+            container.innerHTML = '';
+
+            const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
+
+            let filtered = myLogs;
+            if (filterDateString) {
+                const targetDate = new Date(filterDateString).toDateString();
+                filtered = myLogs.filter(log => new Date(log.date).toDateString() === targetDate);
+                label.textContent = `Logs for ${new Date(filterDateString).toLocaleDateString()}`;
+            } else {
+                label.textContent = `All Logged Shifts (${myLogs.length})`;
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 py-4 text-center">No attendance recorded for this date.</p>`;
+                return;
+            }
+
+            filtered.forEach(log => {
+                const row = document.createElement('div');
+                row.className = 'p-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl flex items-center justify-between text-xs';
+                row.innerHTML = `
+                    <div>
+                        <span class="text-slate-200 font-semibold block">${log.date}</span>
+                        <span class="text-[10px] text-slate-400">Duration: ${log.durationText}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">${log.clockIn}</span>
+                        <span class="text-slate-600">-</span>
+                        <span class="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono">${log.clockOut}</span>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
         }
 
         function renderClockUI() {
