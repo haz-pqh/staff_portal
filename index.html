@@ -130,11 +130,13 @@
 
             <!-- TAB 2: ATTENDANCE TRACKER (Current User Only) -->
             <section id="tab-attendance" class="tab-content space-y-6 hidden">
-                <div class="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
-                    <div class="p-6 border-b border-slate-800 flex flex-wrap justify-between items-center gap-4">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-xl p-6">
+                    
+                    <!-- Header & Actions -->
+                    <div class="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-800/80">
                         <div>
                             <h3 class="text-base font-semibold text-white flex items-center gap-2">
-                                <i class="fa-solid fa-calendar-check text-indigo-400 text-sm"></i> My Attendance History
+                                <i class="fa-solid fa-calendar-days text-indigo-400 text-sm"></i> My Attendance History
                             </h3>
                             <p class="text-xs text-slate-400 mt-0.5">Showing attendance entries exclusively for your account</p>
                         </div>
@@ -143,19 +145,11 @@
                         </button>
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs text-slate-300">
-                            <thead class="bg-slate-950/60 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                                <tr>
-                                    <th class="py-3.5 px-6">Date</th>
-                                    <th class="py-3.5 px-6">Clock In</th>
-                                    <th class="py-3.5 px-6">Clock Out</th>
-                                    <th class="py-3.5 px-6 text-right">Shift Duration</th>
-                                </tr>
-                            </thead>
-                            <tbody id="myAttendanceTableBody" class="divide-y divide-slate-800/60"></tbody>
-                        </table>
+                    <!-- Attendance Calendar Cards Container -->
+                    <div id="myAttendanceList" class="mt-6 space-y-3">
+                        <!-- Dynamic Calendar Entries Inject Here -->
                     </div>
+
                 </div>
             </section>
 
@@ -575,25 +569,75 @@
         // Render Current User Attendance Only
         function renderAttendanceUI() {
             const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
-            const tbody = document.getElementById('myAttendanceTableBody');
-            tbody.innerHTML = '';
+            const container = document.getElementById('myAttendanceList');
+            container.innerHTML = '';
 
             if (myLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-500 text-xs">No attendance records found for your account.</td></tr>`;
+                container.innerHTML = `
+                    <div class="py-12 text-center text-slate-500 text-xs bg-slate-950/40 rounded-2xl border border-slate-800/50">
+                        <i class="fa-solid fa-calendar-xmark text-2xl text-slate-600 mb-2 block"></i>
+                        No attendance records found for your account.
+                    </div>`;
             } else {
                 myLogs.forEach(log => {
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-slate-800/40 transition-colors duration-150';
-                    row.innerHTML = `
-                        <td class="py-3.5 px-6 font-semibold text-slate-200">${log.date}</td>
-                        <td class="py-3.5 px-6"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">${log.clockIn}</span></td>
-                        <td class="py-3.5 px-6"><span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-medium">${log.clockOut}</span></td>
-                        <td class="py-3.5 px-6 text-right font-mono font-bold text-slate-300">${log.durationText}</td>
+                    // Parse date for Calendar Badge
+                    const dateObj = new Date(log.date);
+                    const validDate = !isNaN(dateObj) ? dateObj : new Date();
+                    
+                    const dayNum = validDate.getDate().toString().padStart(2, '0');
+                    const monthName = validDate.toLocaleString('default', { month: 'short' }).toUpperCase();
+                    const yearNum = validDate.getFullYear();
+                    const weekDay = validDate.toLocaleString('default', { weekday: 'short' });
+
+                    const card = document.createElement('div');
+                    card.className = 'bg-slate-950/50 hover:bg-slate-950 border border-slate-800/80 rounded-2xl p-4 transition-all duration-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4';
+
+                    card.innerHTML = `
+                        <!-- Calendar Date Block -->
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-14 h-14 rounded-2xl bg-indigo-950/50 border border-indigo-500/30 flex flex-col items-center justify-center shrink-0 shadow-inner">
+                                <span class="text-[9px] font-bold text-indigo-400 uppercase tracking-wider leading-none">${monthName}</span>
+                                <span class="text-lg font-black text-white leading-none my-0.5">${dayNum}</span>
+                                <span class="text-[8px] font-medium text-slate-400 leading-none">${weekDay}</span>
+                            </div>
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">${log.date}</span>
+                                <span class="text-[10px] text-slate-500 uppercase font-medium">${yearNum} Shift</span>
+                            </div>
+                        </div>
+
+                        <!-- Clock In / Out & Duration -->
+                        <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                            
+                            <!-- Clock In Badge -->
+                            <div class="flex flex-col items-start sm:items-end">
+                                <span class="text-[9px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Clock In</span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold whitespace-nowrap">
+                                    <i class="fa-solid fa-arrow-right-to-bracket text-[10px]"></i> ${log.clockIn}
+                                </span>
+                            </div>
+
+                            <!-- Clock Out Badge -->
+                            <div class="flex flex-col items-start sm:items-end">
+                                <span class="text-[9px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Clock Out</span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 text-xs font-semibold whitespace-nowrap">
+                                    <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i> ${log.clockOut}
+                                </span>
+                            </div>
+
+                            <!-- Shift Duration -->
+                            <div class="flex flex-col items-end pl-2 border-l border-slate-800 min-w-[70px]">
+                                <span class="text-[9px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Duration</span>
+                                <span class="text-xs font-mono font-bold text-slate-200 whitespace-nowrap">${log.durationText}</span>
+                            </div>
+
+                        </div>
                     `;
-                    tbody.appendChild(row);
+                    container.appendChild(card);
                 });
             }
 
+            // Update Header Counter Stats
             document.getElementById('myTotalShifts').textContent = myLogs.length;
             const totalMs = myLogs.reduce((acc, curr) => acc + (curr.durationMs || 0), 0);
             document.getElementById('myTotalHours').textContent = `${(totalMs / 3600000).toFixed(1)} hrs`;
