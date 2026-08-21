@@ -497,6 +497,32 @@
             });
         }
 
+        // Firebase Presence System (Auto Online/Offline)
+        function setupPresenceSystem(user) {
+            if (!user) return;
+        
+            const userPresenceRef = db.ref(`presence/${user.uid}`);
+            const connectedRef = db.ref('.info/connected');
+        
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    // Tell Firebase server to automatically set OFFLINE when connection drops or tab closes
+                    userPresenceRef.onDisconnect().set({
+                        status: 'OFFLINE',
+                        email: user.email,
+                        lastSeen: firebase.database.ServerValue.TIMESTAMP
+                    });
+        
+                    // Set current state to ONLINE
+                    userPresenceRef.set({
+                        status: 'ONLINE',
+                        email: user.email,
+                        lastSeen: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+            });
+        }
+        
         // Clock Logic - Continuous 1-second loop
         function updateClock() {
             const now = new Date();
