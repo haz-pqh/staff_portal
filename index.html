@@ -193,37 +193,173 @@
 
             <!-- TAB 3: DAILY SALE UPDATE -->
             <section id="tab-sales" class="tab-content space-y-6 hidden">
-                <div class="max-w-2xl mx-auto bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl">
-                    <h3 class="text-base font-semibold text-white mb-1 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-line text-indigo-400"></i> Submit Daily Sales Update
-                    </h3>
-                    <p class="text-xs text-slate-400 mb-6">Record today's sales figure directly into the system database (strictly 1 entry per date).</p>
-
-                    <form onsubmit="handleSalesSubmit(event)" class="space-y-4">
+                <!-- Daily Sales Update Container -->
+                <div class="max-w-4xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-slate-200">
+                    <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
                         <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Date</label>
-                            <input type="date" id="salesDate" required 
-                                class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                            <h2 class="text-base font-bold text-white uppercase tracking-wider">Daily Sales & Inventory Report</h2>
+                            <p class="text-xs text-slate-400">Complete all financial, platform, expense, and flavor inventory metrics.</p>
                         </div>
-
+                        <span class="px-3 py-1 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold rounded-full">Daily Log</span>
+                    </div>
+                
+                    <form id="dailySalesForm" onsubmit="handleSalesSubmit(event)" class="space-y-6">
+                        
+                        <!-- SECTION 1: General Info & Cash -->
                         <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Total Sales Amount (MYR)</label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-2.5 text-slate-500 text-sm font-semibold">RM</span>
-                                <input type="number" step="0.01" id="salesAmount" placeholder="0.00" required 
-                                    class="w-full pl-12 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                            <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3">1. General Information & Cash</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Cawangan (Branch)</label>
+                                    <input type="text" id="salesCawangan" required placeholder="e.g. PERMATA" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Tarikh (Date)</label>
+                                    <input type="date" id="salesDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Jumlah Bag & Catatan Bag</label>
+                                    <input type="text" id="salesJumlahBag" placeholder="e.g. 10 bag (8 bag bawa balik)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Petty Cash (RM)</label>
+                                    <input type="number" step="0.01" id="salesPettyCash" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Sales Cash (RM)</label>
+                                    <input type="number" step="0.01" id="salesSalesCash" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
                             </div>
                         </div>
-
+                
+                        <!-- SECTION 2: Platform Sales -->
                         <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Notes / Shift Remarks</label>
-                            <textarea id="salesNotes" rows="3" placeholder="e.g. Peak hours during lunch, promo active..." 
-                                class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition"></textarea>
+                            <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3">2. Platform Revenue (+ Sales)</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Misi (RM)</label>
+                                    <input type="number" step="0.01" id="salesMisi" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Lalamove (RM)</label>
+                                    <input type="number" step="0.01" id="salesLalamove" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">FoodPanda (RM & Qty)</label>
+                                    <input type="text" id="salesFoodPanda" placeholder="e.g. 178.75 (4)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">GrabFood (RM)</label>
+                                    <input type="number" step="0.01" id="salesGrabFood" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Shopee Food (RM)</label>
+                                    <input type="number" step="0.01" id="salesShopeeFood" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                            </div>
                         </div>
-
-                        <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition active:scale-[0.98]">
-                            Submit Sales Report
-                        </button>
+                
+                        <!-- SECTION 3: Operational Expenses -->
+                        <div>
+                            <h3 class="text-xs font-bold text-rose-400 uppercase tracking-wider mb-3">3. Operational Expenses (- Tolak)</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Gas (RM)</label>
+                                    <input type="number" step="0.01" id="expGas" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Ais (RM)</label>
+                                    <input type="number" step="0.01" id="expAis" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Beli Barang (RM)</label>
+                                    <input type="number" step="0.01" id="expBeliBarang" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Minyak Kenderaan (RM)</label>
+                                    <input type="number" step="0.01" id="expMinyakKenderaan" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Dobi (RM)</label>
+                                    <input type="number" step="0.01" id="expDobi" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Minyak Masak (RM / Qty)</label>
+                                    <input type="text" id="expMinyakMasak" placeholder="e.g. 5" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                            </div>
+                
+                            <!-- Staff Meal Input -->
+                            <div class="mt-3">
+                                <label class="block text-[11px] text-slate-400 mb-1">Staff Meal (List items & names)</label>
+                                <textarea id="expStaffMeal" rows="2" placeholder="1. ARIL - 2&#10;2. ..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50 resize-none"></textarea>
+                            </div>
+                        </div>
+                
+                        <!-- SECTION 4: Wastage, Promos & Quality Control -->
+                        <div>
+                            <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3">4. Wastage & Promos</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Ayam Tak Habis</label>
+                                    <input type="text" id="wasteAyamTakHabis" placeholder="e.g. 24 ketul" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Ayam Busuk</label>
+                                    <input type="text" id="wasteAyamBusuk" placeholder="Qty / Details" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Ayam Short</label>
+                                    <input type="text" id="wasteAyamShort" placeholder="Qty / Details" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Review</label>
+                                    <input type="text" id="qReview" placeholder="Customer reviews" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Loyal Kad</label>
+                                    <input type="text" id="qLoyalKad" placeholder="Redemptions count" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Promo 10 Pcs Ayam</label>
+                                    <input type="text" id="qPromo10Pcs" placeholder="e.g. 1 Promo Riang" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <label class="block text-[11px] text-slate-400 mb-1">Catatan Additional Notes</label>
+                                <input type="text" id="salesCatatan" placeholder="Additional remarks..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+                
+                        <!-- SECTION 5: Flavor & Side Stock Inventory Table -->
+                        <div>
+                            <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">5. Flavor & Item Inventory Tracker</h3>
+                            <div class="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-950/50">
+                                <table class="w-full text-left text-xs text-slate-300">
+                                    <thead class="bg-slate-950 text-[11px] text-slate-400 uppercase border-b border-slate-800">
+                                        <tr>
+                                            <th class="p-3 font-semibold">Item / Flavor</th>
+                                            <th class="p-3 font-semibold text-center">Prev Stock</th>
+                                            <th class="p-3 font-semibold text-center">New Stock</th>
+                                            <th class="p-3 font-semibold text-center">Sold</th>
+                                            <th class="p-3 font-semibold text-center">Promo Free</th>
+                                            <th class="p-3 font-semibold text-center">Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="flavorInventoryRows" class="divide-y divide-slate-800/60">
+                                        <!-- Rendered by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                
+                        <!-- Submit Button -->
+                        <div class="flex justify-end pt-4 border-t border-slate-800">
+                            <button type="submit" class="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-950/50 active:scale-95 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                Submit Daily Report
+                            </button>
+                        </div>
                     </form>
                 </div>
 
@@ -990,32 +1126,109 @@
             renderSelectedDateLogs();
         }
 
-        // Sales Functionality with "Once Per Day" Rule
+        // Pre-defined Flavor List matching Image 2
+        const flavorItems = ['Cheese', 'Korean', 'Garlic', 'Furikake', 'Togarashi', 'Coleslaw'];
+        
+        // Render Inventory Form Rows
+        function initFlavorInventoryRows() {
+            const tbody = document.getElementById('flavorInventoryRows');
+            if (!tbody) return;
+        
+            tbody.innerHTML = '';
+            flavorItems.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-900/40 transition';
+                row.innerHTML = `
+                    <td class="p-3 font-medium text-slate-200">${item}</td>
+                    <td class="p-2"><input type="number" data-item="${item}" data-col="prevStock" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"></td>
+                    <td class="p-2"><input type="number" data-item="${item}" data-col="newStock" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"></td>
+                    <td class="p-2"><input type="number" data-item="${item}" data-col="sold" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"></td>
+                    <td class="p-2"><input type="number" data-item="${item}" data-col="promoFree" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"></td>
+                    <td class="p-2"><input type="number" data-item="${item}" data-col="balance" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Call on page load
+        document.addEventListener('DOMContentLoaded', initFlavorInventoryRows);
+        
+        // Submit Complete Form Data to Firebase
         function handleSalesSubmit(e) {
             e.preventDefault();
-            const date = document.getElementById('salesDate').value;
-            const amount = parseFloat(document.getElementById('salesAmount').value);
-            const notes = document.getElementById('salesNotes').value.trim();
-
-            // RULE: Prevent duplicate submissions for the same date
-            const existingEntry = salesLogs.find(s => s.date === date);
-            if (existingEntry) {
-                showToast(`Daily sale for ${date} was already submitted by ${existingEntry.submittedBy}.`, 'error');
+        
+            const user = auth.currentUser;
+            if (!user) {
+                showToast("Please login first.", "error");
                 return;
             }
-
-            const newSalesRef = db.ref('daily_sales').push();
-            newSalesRef.set({
-                id: newSalesRef.key,
-                date,
-                amount,
-                notes: notes || 'N/A',
-                submittedBy: auth.currentUser ? (auth.currentUser.displayName || auth.currentUser.email) : 'Staff',
-                userEmail: currentUserEmail
-            }).then(() => {
-                showToast("Daily sales report submitted!");
-                document.getElementById('salesAmount').value = '';
-                document.getElementById('salesNotes').value = '';
+        
+            // 1. Gather Flavor Table Data
+            const inventoryData = {};
+            flavorItems.forEach(item => {
+                inventoryData[item] = {
+                    prevStock: Number(document.querySelector(`input[data-item="${item}"][data-col="prevStock"]`)?.value || 0),
+                    newStock: Number(document.querySelector(`input[data-item="${item}"][data-col="newStock"]`)?.value || 0),
+                    sold: Number(document.querySelector(`input[data-item="${item}"][data-col="sold"]`)?.value || 0),
+                    promoFree: Number(document.querySelector(`input[data-item="${item}"][data-col="promoFree"]`)?.value || 0),
+                    balance: Number(document.querySelector(`input[data-item="${item}"][data-col="balance"]`)?.value || 0),
+                };
+            });
+        
+            // 2. Build Payload
+            const salesReportPayload = {
+                submittedBy: user.displayName || user.email.split('@')[0],
+                userEmail: currentUserEmail,
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+        
+                // General Info
+                cawangan: document.getElementById('salesCawangan').value,
+                date: document.getElementById('salesDate').value,
+                jumlahBag: document.getElementById('salesJumlahBag').value,
+                pettyCash: parseFloat(document.getElementById('salesPettyCash').value || 0),
+                salesCash: parseFloat(document.getElementById('salesSalesCash').value || 0),
+        
+                // Platform Sales
+                platforms: {
+                    misi: parseFloat(document.getElementById('salesMisi').value || 0),
+                    lalamove: parseFloat(document.getElementById('salesLalamove').value || 0),
+                    foodPanda: document.getElementById('salesFoodPanda').value,
+                    grabFood: parseFloat(document.getElementById('salesGrabFood').value || 0),
+                    shopeeFood: parseFloat(document.getElementById('salesShopeeFood').value || 0),
+                },
+        
+                // Operational Expenses
+                expenses: {
+                    gas: parseFloat(document.getElementById('expGas').value || 0),
+                    ais: parseFloat(document.getElementById('expAis').value || 0),
+                    beliBarang: parseFloat(document.getElementById('expBeliBarang').value || 0),
+                    minyakKenderaan: parseFloat(document.getElementById('expMinyakKenderaan').value || 0),
+                    dobi: parseFloat(document.getElementById('expDobi').value || 0),
+                    minyakMasak: document.getElementById('expMinyakMasak').value,
+                    staffMeal: document.getElementById('expStaffMeal').value,
+                },
+        
+                // Wastage & QC
+                qualityAndWastage: {
+                    ayamTakHabis: document.getElementById('wasteAyamTakHabis').value,
+                    ayamBusuk: document.getElementById('wasteAyamBusuk').value,
+                    ayamShort: document.getElementById('wasteAyamShort').value,
+                    review: document.getElementById('qReview').value,
+                    loyalKad: document.getElementById('qLoyalKad').value,
+                    promo10Pcs: document.getElementById('qPromo10Pcs').value,
+                },
+        
+                catatan: document.getElementById('salesCatatan').value,
+                inventoryTracker: inventoryData
+            };
+        
+            // 3. Push Record to Firebase
+            db.ref('sales_updates').push(salesReportPayload).then(() => {
+                showToast("Daily sales report submitted successfully!");
+                document.getElementById('dailySalesForm').reset();
+                initFlavorInventoryRows();
+            }).catch(err => {
+                showToast(err.message, "error");
             });
         }
 
