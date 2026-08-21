@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Portal | Attendance & Clock Terminal</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#f0f5ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body class="h-full text-slate-100 font-sans antialiased bg-slate-950 selection:bg-indigo-500 selection:text-white">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ==================== LOGIN VIEW ==================== -->
+    <div id="loginView" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/30 via-slate-950 to-slate-950">
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl shadow-2xl shadow-indigo-950/50 relative z-10">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-14 h-14 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-2xl mb-4 text-xl">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white tracking-tight">Welcome Back</h1>
+                <p class="text-xs text-slate-400 mt-1">Sign in with your staff credentials</p>
+            </div>
+
+            <!-- Google Sign In Button -->
+            <button type="button" onclick="handleGoogleLogin()" 
+                class="w-full py-3 bg-slate-950 hover:bg-slate-800/80 text-slate-200 border border-slate-800 font-medium rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-3 text-sm mb-6">
+                <svg class="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/>
+                    <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+                    <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 10.8 0 12s.7 2.3 1.9 4.7l3.7-2.9z"/>
+                    <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"/>
+                </svg>
+                <span>Continue with Google</span>
+            </button>
+
+            <!-- Divider -->
+            <div class="relative flex py-2 items-center mb-6">
+                <div class="flex-grow border-t border-slate-800"></div>
+                <span class="flex-shrink mx-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Or with email</span>
+                <div class="flex-grow border-t border-slate-800"></div>
+            </div>
+
+            <!-- Email/Password Form -->
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Work Email</label>
+                    <div class="relative">
+                        <i class="fa-regular fa-envelope absolute left-4 top-3.5 text-slate-500 text-sm"></i>
+                        <input type="email" id="loginEmail" required placeholder="alex@company.com" 
+                            class="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-4 top-3.5 text-slate-500 text-sm"></i>
+                        <input type="password" id="loginPassword" required placeholder="••••••••" 
+                            class="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                    </div>
+                </div>
+
+                <button type="submit" id="loginBtn" 
+                    class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2">
+                    <span>Sign In</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== DASHBOARD PORTAL VIEW ==================== -->
+    <div id="portalView" class="hidden min-h-screen flex flex-col bg-slate-950">
+        <header class="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div id="userAvatarContainer" class="w-9 h-9 rounded-xl overflow-hidden bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                        <i id="userAvatarFallback" class="fa-solid fa-bolt text-sm"></i>
+                        <img id="userAvatarImg" class="w-full h-full object-cover hidden" alt="Avatar">
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-white tracking-wide">Staff Portal</h2>
+                        <p id="userEmailDisplay" class="text-xs text-slate-400">user@company.com</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-6">
+                    <div class="hidden sm:flex flex-col items-end border-r border-slate-800 pr-6">
+                        <span id="liveTime" class="font-mono text-base font-semibold text-indigo-400">00:00:00 AM</span>
+                        <span id="liveDate" class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Loading...</span>
+                    </div>
+
+                    <button onclick="handleLogout()" class="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 rounded-xl transition flex items-center gap-2">
+                        <i class="fa-solid fa-right-from-bracket text-slate-400"></i> Sign Out
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Shifts Logged</p>
+                        <p id="totalShifts" class="text-2xl font-bold text-white mt-0.5">0</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
+                        <i class="fa-regular fa-clock"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Hours Worked</p>
+                        <p id="totalHours" class="text-2xl font-bold text-white mt-0.5">0.0 hrs</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-user-clock"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Active Staff</p>
+                        <p id="activeEmpDisplay" class="text-sm font-bold text-white mt-1 truncate max-w-[130px]">None</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-signal"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Database Sync</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="text-xs font-semibold text-emerald-400">Live Connected</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div class="lg:col-span-4 bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
+                            <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-terminal text-indigo-400 text-sm"></i> Clocking Terminal
+                            </h3>
+                            <span id="statusBadge" class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
+                                Offline
+                            </span>
+                        </div>
+
+                        <div class="space-y-4 mb-6">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1.5">Employee Name</label>
+                                <input type="text" id="empName" placeholder="e.g. Jane Doe" 
+                                    class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1.5">Employee ID</label>
+                                <input type="text" id="empId" placeholder="e.g. EMP-1042" 
+                                    class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition">
+                            </div>
+                        </div>
+
+                        <div id="statusBanner" class="p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6 transition-all duration-300">
+                            <span class="text-[10px] uppercase tracking-widest text-slate-500 font-bold block mb-1">Shift Duration</span>
+                            <div id="sessionTimer" class="font-mono text-3xl font-bold text-slate-500 my-1">00:00:00</div>
+                            <p id="statusText" class="text-xs text-slate-400">Ready to clock in</p>
+                        </div>
+                    </div>
+
+                    <button id="clockBtn" onclick="toggleClock()" 
+                        class="w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play text-xs"></i>
+                        <span id="btnText">Clock In</span>
+                    </button>
+                </div>
+
+                <div class="lg:col-span-8 bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+                    <div class="p-6 border-b border-slate-800 flex flex-wrap justify-between items-center gap-4">
+                        <div>
+                            <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-indigo-400 text-sm"></i> Attendance History
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Real-time attendance entries synced from backend</p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
+                                <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Search employee..." 
+                                    class="pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition">
+                            </div>
+                            <button onclick="exportCSV()" class="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-file-csv text-indigo-400"></i> Export CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950/60 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                                <tr>
+                                    <th class="py-3.5 px-6">Employee</th>
+                                    <th class="py-3.5 px-6">Date</th>
+                                    <th class="py-3.5 px-6">Clock In</th>
+                                    <th class="py-3.5 px-6">Clock Out</th>
+                                    <th class="py-3.5 px-6 text-right">Shift Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTableBody" class="divide-y divide-slate-800/60"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        // 1. FIREBASE CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8PVd9v61cAmKoe_RjB2Wc1AswASLIFWo",
+            authDomain: "staffportal-f740f.firebaseapp.com",
+            databaseURL: "https://staffportal-f740f-default-rtdb.firebaseio.com",
+            projectId: "staffportal-f740f",
+            storageBucket: "staffportal-f740f.firebasestorage.app",
+            messagingSenderId: "739455943513",
+            appId: "1:739455943513:web:84850f115af46cafcb8248",
+            measurementId: "G-2BK6WZV8TC"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        let attendanceLogs = [];
+        let activeSession = null;
+
+        // Toast Helper
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgClass = type === 'error' ? 'bg-rose-950/90 border-rose-800 text-rose-200' : 'bg-slate-900/90 border-indigo-500/30 text-slate-200';
+            const icon = type === 'error' ? 'fa-circle-xmark text-rose-400' : 'fa-circle-check text-indigo-400';
+
+            toast.className = `px-4 py-3 rounded-xl border backdrop-blur-lg shadow-2xl text-xs font-medium flex items-center gap-3 transition-all duration-300 pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-sm"></i> <span>${message}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Auth Listener
+        auth.onAuthStateChanged((user) => {
+            const loginView = document.getElementById('loginView');
+            const portalView = document.getElementById('portalView');
+
+            if (user) {
+                loginView.classList.add('hidden');
+                portalView.classList.remove('hidden');
+                document.getElementById('userEmailDisplay').textContent = user.email;
+
+                // Handle Google Profile Avatar
+                const avatarImg = document.getElementById('userAvatarImg');
+                const avatarFallback = document.getElementById('userAvatarFallback');
+                if (user.photoURL) {
+                    avatarImg.src = user.photoURL;
+                    avatarImg.classList.remove('hidden');
+                    avatarFallback.classList.add('hidden');
+                } else {
+                    avatarImg.classList.add('hidden');
+                    avatarFallback.classList.remove('hidden');
+                }
+
+                // Auto-fill Employee Name from Google Profile or Email
+                if (!document.getElementById('empName').value) {
+                    document.getElementById('empName').value = user.displayName || user.email.split('@')[0];
+                }
+
+                initDatabaseListeners();
+            } else {
+                portalView.classList.add('hidden');
+                loginView.classList.remove('hidden');
+            }
+        });
+
+        // Google Sign-In Handler
+        function handleGoogleLogin() {
+            auth.signInWithPopup(googleProvider)
+                .then((result) => {
+                    showToast(`Signed in as ${result.user.displayName || result.user.email}`);
+                })
+                .catch((err) => showToast(err.message, 'error'));
+        }
+
+        // Email / Password Login Handler
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => showToast("Signed in successfully!"))
+                .catch((err) => showToast(err.message, 'error'));
+        }
+
+        function handleLogout() {
+            auth.signOut().then(() => showToast("Signed out."));
+        }
+
+        // Firebase Data Sync
+        function initDatabaseListeners() {
+            db.ref('attendance_logs').on('value', (snapshot) => {
+                const data = snapshot.val();
+                attendanceLogs = data ? Object.values(data).reverse() : [];
+                renderUI();
+            });
+
+            db.ref('active_session').on('value', (snapshot) => {
+                activeSession = snapshot.val();
+                renderUI();
+            });
+        }
+
+        // Clock & UI Renderers
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('liveTime').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('liveDate').textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+            if (activeSession) {
+                const elapsedMs = now - new Date(activeSession.clockInTime);
+                const hrs = Math.floor(elapsedMs / 3600000);
+                const mins = Math.floor((elapsedMs % 3600000) / 60000);
+                const secs = Math.floor((elapsedMs % 60000) / 1000);
+                document.getElementById('sessionTimer').textContent = 
+                    `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }
+        }
+        setInterval(updateClock, 1000);
+
+        function toggleClock() {
+            const empName = document.getElementById('empName').value.trim();
+            const empId = document.getElementById('empId').value.trim();
+
+            if (!empName || !empId) {
+                showToast("Please provide both Employee Name and ID.", "error");
+                return;
+            }
+
+            const now = new Date();
+
+            if (!activeSession) {
+                db.ref('active_session').set({
+                    empName,
+                    empId,
+                    clockInTime: now.toISOString()
+                }).then(() => showToast(`Clocked in: ${empName}`));
+            } else {
+                const clockInDate = new Date(activeSession.clockInTime);
+                const diffMs = now - clockInDate;
+                const totalMinutes = Math.max(1, Math.round(diffMs / 60000));
+                const hrs = Math.floor(totalMinutes / 60);
+                const mins = totalMinutes % 60;
+
+                const newLogRef = db.ref('attendance_logs').push();
+                newLogRef.set({
+                    id: newLogRef.key,
+                    empName: activeSession.empName,
+                    empId: activeSession.empId,
+                    date: clockInDate.toLocaleDateString(),
+                    clockIn: clockInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    clockOut: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    durationMs: diffMs,
+                    durationText: `${hrs}h ${mins}m`
+                }).then(() => {
+                    db.ref('active_session').remove();
+                    showToast(`Clocked out. Shift duration: ${hrs}h ${mins}m`);
+                });
+            }
+        }
+
+        function renderUI() {
+            const clockBtn = document.getElementById('clockBtn');
+            const btnText = document.getElementById('btnText');
+            const statusText = document.getElementById('statusText');
+            const statusBanner = document.getElementById('statusBanner');
+            const sessionTimer = document.getElementById('sessionTimer');
+            const statusBadge = document.getElementById('statusBadge');
+            const empNameInput = document.getElementById('empName');
+            const empIdInput = document.getElementById('empId');
+
+            if (activeSession) {
+                btnText.textContent = 'Clock Out';
+                clockBtn.className = 'w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-rose-600 hover:bg-rose-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2';
+                
+                statusText.textContent = `Active Shift: ${activeSession.empName}`;
+                statusBanner.className = 'p-6 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 text-center mb-6 shadow-inner';
+                sessionTimer.className = 'font-mono text-3xl font-bold text-emerald-400 my-1 tracking-wider';
+
+                statusBadge.textContent = 'Clocked In';
+                statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+
+                empNameInput.disabled = true;
+                empIdInput.disabled = true;
+                document.getElementById('activeEmpDisplay').textContent = activeSession.empName;
+            } else {
+                btnText.textContent = 'Clock In';
+                clockBtn.className = 'w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2';
+                
+                statusText.textContent = 'Ready to clock in';
+                statusBanner.className = 'p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6';
+                sessionTimer.className = 'font-mono text-3xl font-bold text-slate-600 my-1 tracking-wider';
+                sessionTimer.textContent = '00:00:00';
+
+                statusBadge.textContent = 'Clocked Out';
+                statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700';
+
+                empNameInput.disabled = false;
+                empIdInput.disabled = false;
+                document.getElementById('activeEmpDisplay').textContent = 'None';
+            }
+
+            renderTable(attendanceLogs);
+
+            document.getElementById('totalShifts').textContent = attendanceLogs.length;
+            const totalMs = attendanceLogs.reduce((acc, curr) => acc + (curr.durationMs || 0), 0);
+            document.getElementById('totalHours').textContent = `${(totalMs / 3600000).toFixed(1)} hrs`;
+        }
+
+        function renderTable(logs) {
+            const tbody = document.getElementById('attendanceTableBody');
+            tbody.innerHTML = '';
+
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-500 text-xs">No attendance records registered yet.</td></tr>`;
+            } else {
+                logs.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-800/40 transition-colors duration-150';
+                    row.innerHTML = `
+                        <td class="py-3.5 px-6 font-semibold text-slate-200">
+                            ${log.empName} <span class="text-[10px] font-normal text-slate-500 ml-1">(${log.empId})</span>
+                        </td>
+                        <td class="py-3.5 px-6 text-slate-400">${log.date}</td>
+                        <td class="py-3.5 px-6"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">${log.clockIn}</span></td>
+                        <td class="py-3.5 px-6"><span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-medium">${log.clockOut}</span></td>
+                        <td class="py-3.5 px-6 text-right font-mono font-bold text-slate-300">${log.durationText}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        function filterTable() {
+            const term = document.getElementById('tableSearch').value.toLowerCase();
+            const filtered = attendanceLogs.filter(log => 
+                log.empName.toLowerCase().includes(term) || log.empId.toLowerCase().includes(term)
+            );
+            renderTable(filtered);
+        }
+
+        function exportCSV() {
+            if (attendanceLogs.length === 0) return showToast('No data to export.', 'error');
+            let csv = "data:text/csv;charset=utf-8,Employee,ID,Date,Clock In,Clock Out,Duration\n";
+            attendanceLogs.forEach(l => { csv += `"${l.empName}","${l.empId}","${l.date}","${l.clockIn}","${l.clockOut}","${l.durationText}"\n`; });
+            const link = document.createElement('a');
+            link.setAttribute('href', encodeURI(csv));
+            link.setAttribute('download', `staff_attendance_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
