@@ -577,6 +577,22 @@
             renderAttendanceUI();
         }
 
+        // Helper to reliably parse "DD/MM/YYYY" or ISO date strings
+        function parseLogDate(dateStr) {
+            if (!dateStr) return null;
+            if (typeof dateStr === 'string' && dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3 && parts[2].length === 4) {
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1; // 0-indexed month
+                    const year = parseInt(parts[2], 10);
+                    return new Date(year, month, day);
+                }
+            }
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        
         function renderCalendarGrid() {
             const grid = document.getElementById('calendarGrid');
             const monthYearLabel = document.getElementById('calendarMonthYear');
@@ -593,9 +609,13 @@
             const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
             const prevMonthDays = new Date(year, month, 0).getDate();
         
+            // Midnight today for past/future comparison
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+        
             const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
         
-            // 1. Render Previous Month Padding Days
+            // 1. Previous Month Padding Days
             for (let i = firstDayIndex; i > 0; i--) {
                 const dayNum = prevMonthDays - i + 1;
                 const cell = document.createElement('div');
@@ -604,17 +624,18 @@
                 grid.appendChild(cell);
             }
         
-            // 2. Render Current Month Days with Attendance Highlights
+            // 2. Current Month Days
             for (let day = 1; day <= totalDaysInMonth; day++) {
                 const dateObj = new Date(year, month, day);
+                dateObj.setHours(0, 0, 0, 0);
         
-                // Check if current user has an attendance entry on this exact year/month/day
-                const hasLog = myLogs.some(log => {
-                    const logDate = new Date(log.date);
-                    return !isNaN(logDate) && 
-                           logDate.getFullYear() === year && 
-                           logDate.getMonth() === month && 
-                           logDate.getDate() === day;
+                // Match log using custom date parser
+                const log = myLogs.find(l => {
+                    const parsed = parseLogDate(l.date);
+                    return parsed && 
+                           parsed.getFullYear() === year && 
+                           parsed.getMonth() === month && 
+                           parsed.getDate() === day;
                 });
         
                 const isSelected = filterDateString && (
@@ -623,25 +644,41 @@
                     new Date(filterDateString).getDate() === day
                 );
         
+                // Determine Highlight Styles
+                let statusStyle = '';
+                let dotColor = '';
+        
+                if (log) {
+                    const status = (log.status || log.type || 'attended').toLowerCase();
+                    if (status === 'mc' || status === 'off' || status === 'leave') {
+                        // Yellow Highlight: MC / Off Day
+                        statusStyle = 'bg-amber-500/20 text-amber-300 border border-amber-500/50 font-bold';
+                        dotColor = 'bg-amber-400';
+                    } else {
+                        // Green Highlight: Attended
+                        statusStyle = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-bold';
+                        dotColor = 'bg-emerald-400';
+                    }
+                } else if (dateObj < today) {
+                    // Red Highlight: Absent (Past day with no attendance entry)
+                    statusStyle = 'bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold';
+                    dotColor = 'bg-rose-400';
+                } else {
+                    // Unhighlighted: Today or Future dates
+                    statusStyle = 'hover:bg-slate-800 text-slate-300 font-medium';
+                }
+        
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.onclick = () => selectDate(dateObj.toISOString());
         
-                // Dynamic styling depending on Attendance & Selected status
-                if (isSelected) {
-                    // Currently active/clicked filter date
-                    button.className = 'h-9 w-9 mx-auto rounded-full bg-indigo-500 text-white font-bold text-xs flex flex-col items-center justify-center shadow-lg shadow-indigo-500/50 ring-2 ring-white ring-offset-2 ring-offset-slate-900 transition active:scale-95';
-                } else if (hasLog) {
-                    // Attended date highlight (Glowing Indigo Circle)
-                    button.className = 'h-9 w-9 mx-auto rounded-full bg-indigo-600/30 text-indigo-300 border border-indigo-500/60 font-bold text-xs flex flex-col items-center justify-center shadow-md shadow-indigo-900/30 hover:bg-indigo-600 hover:text-white transition active:scale-95 relative';
-                } else {
-                    // Standard day without attendance
-                    button.className = 'h-9 w-9 mx-auto rounded-xl hover:bg-slate-800 text-slate-300 font-medium text-xs flex flex-col items-center justify-center transition active:scale-95';
-                }
+                const selectionRing = isSelected ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-900 scale-105 z-10' : '';
+        
+                button.className = `h-9 w-9 mx-auto rounded-full text-xs flex flex-col items-center justify-center transition active:scale-95 relative ${statusStyle} ${selectionRing}`;
         
                 button.innerHTML = `
                     <span>${day}</span>
-                    ${hasLog && !isSelected ? `<span class="w-1.5 h-1.5 rounded-full bg-indigo-400 absolute bottom-1"></span>` : ''}
+                    ${dotColor && !isSelected ? `<span class="w-1 h-1 rounded-full ${dotColor} absolute bottom-1"></span>` : ''}
                 `;
         
                 grid.appendChild(button);
