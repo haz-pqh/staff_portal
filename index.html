@@ -562,10 +562,25 @@
         let currentViewDate = new Date();
         let filterDateString = null;
 
-        // Call inside initDatabaseListeners or renderAttendanceUI
+        // Master UI Render Function
         function renderAttendanceUI() {
             renderCalendarGrid();
             renderSelectedDateLogs();
+            updateAttendanceStats();
+        }
+
+        // Safely update shift stats on dashboard
+        function updateAttendanceStats() {
+            const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
+            
+            const totalShiftsEl = document.getElementById('myTotalShifts');
+            const totalHoursEl = document.getElementById('myTotalHours');
+
+            if (totalShiftsEl) totalShiftsEl.textContent = myLogs.length;
+            if (totalHoursEl) {
+                const totalMs = myLogs.reduce((acc, curr) => acc + (curr.durationMs || 0), 0);
+                totalHoursEl.textContent = `${(totalMs / 3600000).toFixed(1)} hrs`;
+            }
         }
 
         function changeMonth(offset) {
@@ -586,22 +601,24 @@
         function renderCalendarGrid() {
             const grid = document.getElementById('calendarGrid');
             const monthYearLabel = document.getElementById('calendarMonthYear');
+
+            // Guard clause: stop execution if HTML elements are missing
+            if (!grid || !monthYearLabel) return;
+
             grid.innerHTML = '';
 
             const year = currentViewDate.getFullYear();
             const month = currentViewDate.getMonth();
 
-            // Display formatted Month & Year
             monthYearLabel.textContent = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
             const firstDayIndex = new Date(year, month, 1).getDay();
             const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
             const prevMonthDays = new Date(year, month, 0).getDate();
 
-            // User logs mapped for comparison
             const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
 
-            // 1. Render Previous Month Padding Days
+            // 1. Padding days from previous month
             for (let i = firstDayIndex; i > 0; i--) {
                 const dayNum = prevMonthDays - i + 1;
                 const cell = document.createElement('div');
@@ -610,19 +627,17 @@
                 grid.appendChild(cell);
             }
 
-            // 2. Render Current Month Days
+            // 2. Days of current month
             for (let day = 1; day <= totalDaysInMonth; day++) {
                 const dateObj = new Date(year, month, day);
-                // Format YYYY-MM-DD or MM/DD/YYYY to match database log dates
-                const dateString = dateObj.toLocaleDateString();
                 
                 const hasLog = myLogs.some(log => new Date(log.date).toDateString() === dateObj.toDateString());
                 const isSelected = filterDateString && new Date(filterDateString).toDateString() === dateObj.toDateString();
 
                 const button = document.createElement('button');
+                button.type = 'button';
                 button.onclick = () => selectDate(dateObj.toISOString());
 
-                // Styling based on state (Active selected vs normal)
                 if (isSelected) {
                     button.className = 'h-10 w-10 mx-auto rounded-full bg-indigo-600 text-white font-bold text-xs flex flex-col items-center justify-center shadow-lg shadow-indigo-600/40 relative transition-transform active:scale-95';
                 } else {
@@ -641,6 +656,10 @@
         function renderSelectedDateLogs() {
             const container = document.getElementById('selectedDateLogs');
             const label = document.getElementById('selectedDateLabel');
+
+            // Guard clause: stop execution if HTML elements are missing
+            if (!container) return;
+
             container.innerHTML = '';
 
             const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
@@ -649,9 +668,9 @@
             if (filterDateString) {
                 const targetDate = new Date(filterDateString).toDateString();
                 filtered = myLogs.filter(log => new Date(log.date).toDateString() === targetDate);
-                label.textContent = `Logs for ${new Date(filterDateString).toLocaleDateString()}`;
+                if (label) label.textContent = `Logs for ${new Date(filterDateString).toLocaleDateString()}`;
             } else {
-                label.textContent = `All Logged Shifts (${myLogs.length})`;
+                if (label) label.textContent = `All Logged Shifts (${myLogs.length})`;
             }
 
             if (filtered.length === 0) {
