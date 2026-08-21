@@ -688,31 +688,47 @@
         function renderSelectedDateLogs() {
             const container = document.getElementById('selectedDateLogs');
             const label = document.getElementById('selectedDateLabel');
+        
+            if (!container) return;
             container.innerHTML = '';
-
+        
             const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
-
+        
             let filtered = myLogs;
+        
             if (filterDateString) {
-                const targetDate = new Date(filterDateString).toDateString();
-                filtered = myLogs.filter(log => new Date(log.date).toDateString() === targetDate);
-                label.textContent = `Logs for ${new Date(filterDateString).toLocaleDateString()}`;
+                const selObj = new Date(filterDateString);
+                const selYear = selObj.getFullYear();
+                const selMonth = selObj.getMonth();
+                const selDay = selObj.getDate();
+        
+                // Match log date using custom parseLogDate function
+                filtered = myLogs.filter(log => {
+                    const parsed = parseLogDate(log.date);
+                    return parsed && 
+                           parsed.getFullYear() === selYear && 
+                           parsed.getMonth() === selMonth && 
+                           parsed.getDate() === selDay;
+                });
+        
+                const formattedDateLabel = `${selDay.toString().padStart(2, '0')}/${(selMonth + 1).toString().padStart(2, '0')}/${selYear}`;
+                if (label) label.textContent = `Logs for ${formattedDateLabel}`;
             } else {
-                label.textContent = `All Logged Shifts (${myLogs.length})`;
+                if (label) label.textContent = `All Logged Shifts (${myLogs.length})`;
             }
-
+        
             if (filtered.length === 0) {
                 container.innerHTML = `<p class="text-xs text-slate-500 py-4 text-center">No attendance recorded for this date.</p>`;
                 return;
             }
-
+        
             filtered.forEach(log => {
                 const row = document.createElement('div');
                 row.className = 'p-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl flex items-center justify-between text-xs';
                 row.innerHTML = `
                     <div>
                         <span class="text-slate-200 font-semibold block">${log.date}</span>
-                        <span class="text-[10px] text-slate-400">Duration: ${log.durationText}</span>
+                        <span class="text-[10px] text-slate-400">Duration: ${log.durationText || 'N/A'}</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">${log.clockIn}</span>
