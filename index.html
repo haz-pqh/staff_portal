@@ -580,54 +580,70 @@
         function renderCalendarGrid() {
             const grid = document.getElementById('calendarGrid');
             const monthYearLabel = document.getElementById('calendarMonthYear');
+        
+            if (!grid || !monthYearLabel) return;
             grid.innerHTML = '';
-
+        
             const year = currentViewDate.getFullYear();
             const month = currentViewDate.getMonth();
-
-            // Display formatted Month & Year
+        
             monthYearLabel.textContent = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
+        
             const firstDayIndex = new Date(year, month, 1).getDay();
             const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
             const prevMonthDays = new Date(year, month, 0).getDate();
-
-            // User logs mapped for comparison
+        
             const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
-
+        
             // 1. Render Previous Month Padding Days
             for (let i = firstDayIndex; i > 0; i--) {
                 const dayNum = prevMonthDays - i + 1;
                 const cell = document.createElement('div');
-                cell.className = 'h-10 flex flex-col items-center justify-center text-xs text-slate-700 pointer-events-none';
+                cell.className = 'h-9 w-9 mx-auto flex items-center justify-center text-xs text-slate-700 pointer-events-none font-medium';
                 cell.textContent = dayNum;
                 grid.appendChild(cell);
             }
-
-            // 2. Render Current Month Days
+        
+            // 2. Render Current Month Days with Attendance Highlights
             for (let day = 1; day <= totalDaysInMonth; day++) {
                 const dateObj = new Date(year, month, day);
-                // Format YYYY-MM-DD or MM/DD/YYYY to match database log dates
-                const dateString = dateObj.toLocaleDateString();
-                
-                const hasLog = myLogs.some(log => new Date(log.date).toDateString() === dateObj.toDateString());
-                const isSelected = filterDateString && new Date(filterDateString).toDateString() === dateObj.toDateString();
-
+        
+                // Check if current user has an attendance entry on this exact year/month/day
+                const hasLog = myLogs.some(log => {
+                    const logDate = new Date(log.date);
+                    return !isNaN(logDate) && 
+                           logDate.getFullYear() === year && 
+                           logDate.getMonth() === month && 
+                           logDate.getDate() === day;
+                });
+        
+                const isSelected = filterDateString && (
+                    new Date(filterDateString).getFullYear() === year &&
+                    new Date(filterDateString).getMonth() === month &&
+                    new Date(filterDateString).getDate() === day
+                );
+        
                 const button = document.createElement('button');
+                button.type = 'button';
                 button.onclick = () => selectDate(dateObj.toISOString());
-
-                // Styling based on state (Active selected vs normal)
+        
+                // Dynamic styling depending on Attendance & Selected status
                 if (isSelected) {
-                    button.className = 'h-10 w-10 mx-auto rounded-full bg-indigo-600 text-white font-bold text-xs flex flex-col items-center justify-center shadow-lg shadow-indigo-600/40 relative transition-transform active:scale-95';
+                    // Currently active/clicked filter date
+                    button.className = 'h-9 w-9 mx-auto rounded-full bg-indigo-500 text-white font-bold text-xs flex flex-col items-center justify-center shadow-lg shadow-indigo-500/50 ring-2 ring-white ring-offset-2 ring-offset-slate-900 transition active:scale-95';
+                } else if (hasLog) {
+                    // Attended date highlight (Glowing Indigo Circle)
+                    button.className = 'h-9 w-9 mx-auto rounded-full bg-indigo-600/30 text-indigo-300 border border-indigo-500/60 font-bold text-xs flex flex-col items-center justify-center shadow-md shadow-indigo-900/30 hover:bg-indigo-600 hover:text-white transition active:scale-95 relative';
                 } else {
-                    button.className = 'h-10 w-10 mx-auto rounded-xl hover:bg-slate-800/80 text-slate-200 font-medium text-xs flex flex-col items-center justify-center relative transition active:scale-95';
+                    // Standard day without attendance
+                    button.className = 'h-9 w-9 mx-auto rounded-xl hover:bg-slate-800 text-slate-300 font-medium text-xs flex flex-col items-center justify-center transition active:scale-95';
                 }
-
+        
                 button.innerHTML = `
                     <span>${day}</span>
-                    ${hasLog ? `<span class="w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-indigo-400'} absolute bottom-1.5"></span>` : ''}
+                    ${hasLog && !isSelected ? `<span class="w-1.5 h-1.5 rounded-full bg-indigo-400 absolute bottom-1"></span>` : ''}
                 `;
-
+        
                 grid.appendChild(button);
             }
         }
