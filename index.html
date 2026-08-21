@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staff Portal | Attendance & Clock Terminal</title>
+    <title>Staff Portal | Attendance & Management</title>
 
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,6 +32,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <!-- jsPDF for Payslip PDF Downloads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body class="h-full text-slate-100 font-sans antialiased bg-slate-950 selection:bg-indigo-500 selection:text-white">
 
@@ -52,7 +55,6 @@
                 <p class="text-xs text-slate-400 mt-1">Sign in with your authorized Google account</p>
             </div>
 
-            <!-- Google Sign In Button -->
             <button type="button" onclick="handleGoogleLogin()" 
                 class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-3 text-sm">
                 <svg class="w-4 h-4" viewBox="0 0 24 24">
@@ -66,110 +68,108 @@
         </div>
     </div>
 
-    <!-- ==================== DASHBOARD PORTAL VIEW ==================== -->
-    <div id="portalView" class="hidden min-h-screen flex flex-col bg-slate-950">
+    <!-- ==================== MAIN DASHBOARD PORTAL VIEW ==================== -->
+    <div id="portalView" class="hidden min-h-screen flex flex-col bg-slate-950 pb-24">
+        <!-- Top Header -->
         <header class="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-30">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div id="userAvatarContainer" class="w-9 h-9 rounded-xl overflow-hidden bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <div class="w-9 h-9 rounded-xl overflow-hidden bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
                         <i id="userAvatarFallback" class="fa-solid fa-bolt text-sm"></i>
                         <img id="userAvatarImg" class="w-full h-full object-cover hidden" alt="Avatar">
                     </div>
                     <div>
-                        <h2 class="text-sm font-bold text-white tracking-wide">Staff Portal</h2>
+                        <h2 class="text-sm font-bold text-white tracking-wide" id="userDisplayName">Staff Member</h2>
                         <p id="userEmailDisplay" class="text-xs text-slate-400">user@company.com</p>
                     </div>
                 </div>
 
                 <div class="flex items-center gap-6">
-                    <div class="hidden sm:flex flex-col items-end border-r border-slate-800 pr-6">
-                        <span id="liveTime" class="font-mono text-base font-semibold text-indigo-400">00:00:00 AM</span>
+                    <div class="flex flex-col items-end">
+                        <span id="liveTime" class="font-mono text-sm font-semibold text-indigo-400">00:00:00 AM</span>
                         <span id="liveDate" class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Loading...</span>
                     </div>
-
-                    <button onclick="handleLogout()" class="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 rounded-xl transition flex items-center gap-2">
-                        <i class="fa-solid fa-right-from-bracket text-slate-400"></i> Sign Out
-                    </button>
                 </div>
             </div>
         </header>
 
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
-            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg">
-                        <i class="fa-solid fa-list-check"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Shifts Logged</p>
-                        <p id="totalShifts" class="text-2xl font-bold text-white mt-0.5">0</p>
-                    </div>
-                </div>
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
 
-                <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
-                        <i class="fa-regular fa-clock"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Hours Worked</p>
-                        <p id="totalHours" class="text-2xl font-bold text-white mt-0.5">0.0 hrs</p>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
-                        <i class="fa-solid fa-user-clock"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Active Staff</p>
-                        <p id="activeEmpDisplay" class="text-sm font-bold text-white mt-1 truncate max-w-[130px]">None</p>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center text-lg">
-                        <i class="fa-solid fa-signal"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Database Sync</p>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <span class="text-xs font-semibold text-emerald-400">Live Connected</span>
+            <!-- TAB 1: HOME (Dashboard & Clock Terminal) -->
+            <section id="tab-home" class="tab-content space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-list-check"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">My Total Shifts</p>
+                            <p id="myTotalShifts" class="text-2xl font-bold text-white mt-0.5">0</p>
                         </div>
                     </div>
-                </div>
-            </section>
 
-            <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div class="lg:col-span-4 bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
-                            <h3 class="text-base font-semibold text-white flex items-center gap-2">
-                                <i class="fa-solid fa-terminal text-indigo-400 text-sm"></i> Clocking Terminal
-                            </h3>
-                            <span id="statusBadge" class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
-                                Offline
-                            </span>
+                    <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
+                            <i class="fa-regular fa-clock"></i>
                         </div>
+                        <div>
+                            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">My Total Hours</p>
+                            <p id="myTotalHours" class="text-2xl font-bold text-white mt-0.5">0.0 hrs</p>
+                        </div>
+                    </div>
 
-                        <div class="space-y-4 mb-6">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1.5">Employee Name</label>
-                                <input type="text" id="empName" placeholder="e.g. Jane Doe" 
-                                    class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1.5">Employee ID</label>
-                                <input type="text" id="empId" placeholder="e.g. EMP-1042" 
-                                    class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition">
+                    <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-user-clock"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Shift Status</p>
+                            <p id="shiftStatusDisplay" class="text-sm font-bold text-slate-300 mt-1">Clocked Out</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-signal"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Database Sync</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span class="text-xs font-semibold text-emerald-400">Connected</span>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div id="statusBanner" class="p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6 transition-all duration-300">
-                            <span class="text-[10px] uppercase tracking-widest text-slate-500 font-bold block mb-1">Shift Duration</span>
-                            <div id="sessionTimer" class="font-mono text-3xl font-bold text-slate-500 my-1">00:00:00</div>
-                            <p id="statusText" class="text-xs text-slate-400">Ready to clock in</p>
+                <!-- Clock Terminal -->
+                <div class="max-w-xl mx-auto bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl">
+                    <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
+                        <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-terminal text-indigo-400 text-sm"></i> Clocking Terminal
+                        </h3>
+                        <span id="statusBadge" class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
+                            Offline
+                        </span>
+                    </div>
+
+                    <div class="space-y-4 mb-6">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Employee Name</label>
+                            <input type="text" id="empName" placeholder="e.g. Jane Doe" 
+                                class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition">
                         </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Employee ID</label>
+                            <input type="text" id="empId" placeholder="e.g. EMP-1042" 
+                                class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition">
+                        </div>
+                    </div>
+
+                    <div id="statusBanner" class="p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6 transition-all duration-300">
+                        <span class="text-[10px] uppercase tracking-widest text-slate-500 font-bold block mb-1">Shift Duration</span>
+                        <div id="sessionTimer" class="font-mono text-3xl font-bold text-slate-500 my-1">00:00:00</div>
+                        <p id="statusText" class="text-xs text-slate-400">Ready to clock in</p>
                     </div>
 
                     <button id="clockBtn" onclick="toggleClock()" 
@@ -178,51 +178,204 @@
                         <span id="btnText">Clock In</span>
                     </button>
                 </div>
+            </section>
 
-                <div class="lg:col-span-8 bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+            <!-- TAB 2: ATTENDANCE TRACKER (Current User Only) -->
+            <section id="tab-attendance" class="tab-content space-y-6 hidden">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
                     <div class="p-6 border-b border-slate-800 flex flex-wrap justify-between items-center gap-4">
                         <div>
                             <h3 class="text-base font-semibold text-white flex items-center gap-2">
-                                <i class="fa-solid fa-clock-rotate-left text-indigo-400 text-sm"></i> Attendance History
+                                <i class="fa-solid fa-calendar-check text-indigo-400 text-sm"></i> My Attendance History
                             </h3>
-                            <p class="text-xs text-slate-400 mt-0.5">Real-time attendance entries synced from backend</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Showing attendance entries exclusively for your account</p>
                         </div>
-
-                        <div class="flex items-center gap-3">
-                            <div class="relative">
-                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
-                                <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Search employee..." 
-                                    class="pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition">
-                            </div>
-                            <button onclick="exportCSV()" class="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
-                                <i class="fa-solid fa-file-csv text-indigo-400"></i> Export CSV
-                            </button>
-                        </div>
+                        <button onclick="exportCSV()" class="px-3.5 py-2 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv text-indigo-400"></i> Export CSV
+                        </button>
                     </div>
 
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs text-slate-300">
                             <thead class="bg-slate-950/60 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800">
                                 <tr>
-                                    <th class="py-3.5 px-6">Employee</th>
                                     <th class="py-3.5 px-6">Date</th>
                                     <th class="py-3.5 px-6">Clock In</th>
                                     <th class="py-3.5 px-6">Clock Out</th>
                                     <th class="py-3.5 px-6 text-right">Shift Duration</th>
                                 </tr>
                             </thead>
-                            <tbody id="attendanceTableBody" class="divide-y divide-slate-800/60"></tbody>
+                            <tbody id="myAttendanceTableBody" class="divide-y divide-slate-800/60"></tbody>
                         </table>
                     </div>
                 </div>
             </section>
+
+            <!-- TAB 3: DAILY SALE UPDATE -->
+            <section id="tab-sales" class="tab-content space-y-6 hidden">
+                <div class="max-w-2xl mx-auto bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl">
+                    <h3 class="text-base font-semibold text-white mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-indigo-400"></i> Submit Daily Sales Update
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-6">Record today's sales figure directly into the system database.</p>
+
+                    <form onsubmit="handleSalesSubmit(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Date</label>
+                            <input type="date" id="salesDate" required 
+                                class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Total Sales Amount (MYR)</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-2.5 text-slate-500 text-sm font-semibold">RM</span>
+                                <input type="number" step="0.01" id="salesAmount" placeholder="0.00" required 
+                                    class="w-full pl-12 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Notes / Shift Remarks</label>
+                            <textarea id="salesNotes" rows="3" placeholder="e.g. Peak hours during lunch, promo active..." 
+                                class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition"></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition active:scale-[0.98]">
+                            Submit Sales Report
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Sales History Table -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+                    <div class="p-6 border-b border-slate-800">
+                        <h3 class="text-base font-semibold text-white">Submitted Sales History</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950/60 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                                <tr>
+                                    <th class="py-3.5 px-6">Date</th>
+                                    <th class="py-3.5 px-6">Submitted By</th>
+                                    <th class="py-3.5 px-6">Amount</th>
+                                    <th class="py-3.5 px-6">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesTableBody" class="divide-y divide-slate-800/60"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: PAYSLIP DOWNLOADER -->
+            <section id="tab-payslip" class="tab-content space-y-6 hidden">
+                <div class="max-w-md mx-auto bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl text-center">
+                    <div class="w-14 h-14 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-2xl mx-auto flex items-center justify-center text-xl mb-4">
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-1">Download Payslip</h3>
+                    <p class="text-xs text-slate-400 mb-6">Select your payment period to export your official salary payslip as a PDF document.</p>
+
+                    <div class="space-y-4 text-left mb-6">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Select Month</label>
+                            <select id="payslipMonth" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                                <option value="January">January</option>
+                                <option value="February">February</option>
+                                <option value="March">March</option>
+                                <option value="April">April</option>
+                                <option value="May">May</option>
+                                <option value="June">June</option>
+                                <option value="July">July</option>
+                                <option value="August" selected>August</option>
+                                <option value="September">September</option>
+                                <option value="October">October</option>
+                                <option value="November">November</option>
+                                <option value="December">December</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Select Year</label>
+                            <select id="payslipYear" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                                <option value="2026" selected>2026</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="downloadPayslipPDF()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/25 transition active:scale-[0.98] flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-pdf"></i> Download PDF Payslip
+                    </button>
+                </div>
+            </section>
+
+            <!-- TAB 5: USER PROFILE -->
+            <section id="tab-profile" class="tab-content space-y-6 hidden">
+                <div class="max-w-md mx-auto bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl text-center">
+                    <div class="w-20 h-20 rounded-2xl overflow-hidden bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mx-auto mb-4 text-2xl">
+                        <i id="profileAvatarFallback" class="fa-solid fa-user"></i>
+                        <img id="profileAvatarImg" class="w-full h-full object-cover hidden" alt="Profile">
+                    </div>
+
+                    <h3 class="text-lg font-bold text-white" id="profileName">Staff Member</h3>
+                    <p class="text-xs text-indigo-400 font-medium mt-0.5" id="profileEmail">user@company.com</p>
+
+                    <div class="mt-6 border-t border-slate-800 pt-6 space-y-3 text-left">
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800/60">
+                            <span class="text-xs text-slate-400">Account Type</span>
+                            <span class="text-xs font-semibold text-slate-200">Google Verified</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800/60">
+                            <span class="text-xs text-slate-400">Portal Access</span>
+                            <span class="text-xs font-semibold text-emerald-400">Authorized</span>
+                        </div>
+                    </div>
+
+                    <button onclick="handleLogout()" class="w-full mt-8 py-3 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 font-semibold rounded-xl transition flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                    </button>
+                </div>
+            </section>
+
         </main>
+
+        <!-- ==================== FIXED BOTTOM NAVIGATION ==================== -->
+        <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800 py-2 px-4">
+            <div class="max-w-md mx-auto grid grid-cols-5 gap-1 text-center">
+                <button onclick="switchTab('home')" id="nav-home" class="nav-btn flex flex-col items-center py-1.5 text-indigo-400 transition">
+                    <i class="fa-solid fa-house text-base"></i>
+                    <span class="text-[10px] font-medium mt-1">Home</span>
+                </button>
+
+                <button onclick="switchTab('attendance')" id="nav-attendance" class="nav-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition">
+                    <i class="fa-solid fa-calendar-check text-base"></i>
+                    <span class="text-[10px] font-medium mt-1">Attendance</span>
+                </button>
+
+                <button onclick="switchTab('sales')" id="nav-sales" class="nav-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition">
+                    <i class="fa-solid fa-chart-line text-base"></i>
+                    <span class="text-[10px] font-medium mt-1">Sales</span>
+                </button>
+
+                <button onclick="switchTab('payslip')" id="nav-payslip" class="nav-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition">
+                    <i class="fa-solid fa-file-invoice-dollar text-base"></i>
+                    <span class="text-[10px] font-medium mt-1">Payslip</span>
+                </button>
+
+                <button onclick="switchTab('profile')" id="nav-profile" class="nav-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition">
+                    <i class="fa-solid fa-user text-base"></i>
+                    <span class="text-[10px] font-medium mt-1">Profile</span>
+                </button>
+            </div>
+        </nav>
     </div>
 
     <!-- Script Logic -->
     <script>
         // 1. FIREBASE CONFIGURATION
-          const firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyD8PVd9v61cAmKoe_RjB2Wc1AswASLIFWo",
             authDomain: "staffportal-f740f.firebaseapp.com",
             databaseURL: "https://staffportal-f740f-default-rtdb.firebaseio.com",
@@ -231,7 +384,7 @@
             messagingSenderId: "739455943513",
             appId: "1:739455943513:web:84850f115af46cafcb8248",
             measurementId: "G-2BK6WZV8TC"
-          };
+        };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -246,8 +399,11 @@
         ];
 
         let attendanceLogs = [];
+        let salesLogs = [];
         let activeSession = null;
+        let currentUserEmail = "";
 
+        // Toast Helper
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
@@ -264,39 +420,66 @@
             }, 3500);
         }
 
-        // Auth Listener with Email Whitelist Check
+        // Tab Switcher
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-indigo-400');
+                btn.classList.add('text-slate-500');
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            activeBtn.classList.remove('text-slate-500');
+            activeBtn.classList.add('text-indigo-400');
+        }
+
+        // Auth Listener
         auth.onAuthStateChanged((user) => {
             const loginView = document.getElementById('loginView');
             const portalView = document.getElementById('portalView');
 
             if (user) {
-                const userEmail = (user.email || '').toLowerCase();
+                currentUserEmail = (user.email || '').toLowerCase();
 
-                if (!ALLOWED_EMAILS.includes(userEmail)) {
+                if (!ALLOWED_EMAILS.includes(currentUserEmail)) {
                     auth.signOut().then(() => {
-                        showToast(`Access Denied: ${userEmail} is not authorized.`, 'error');
+                        showToast(`Access Denied: ${currentUserEmail} is not authorized.`, 'error');
                     });
                     return;
                 }
 
                 loginView.classList.add('hidden');
                 portalView.classList.remove('hidden');
+
+                // Update UI Profile Info
+                document.getElementById('userDisplayName').textContent = user.displayName || user.email.split('@')[0];
                 document.getElementById('userEmailDisplay').textContent = user.email;
+                document.getElementById('profileName').textContent = user.displayName || user.email.split('@')[0];
+                document.getElementById('profileEmail').textContent = user.email;
 
                 const avatarImg = document.getElementById('userAvatarImg');
                 const avatarFallback = document.getElementById('userAvatarFallback');
+                const profileImg = document.getElementById('profileAvatarImg');
+                const profileFallback = document.getElementById('profileAvatarFallback');
+
                 if (user.photoURL) {
                     avatarImg.src = user.photoURL;
                     avatarImg.classList.remove('hidden');
                     avatarFallback.classList.add('hidden');
-                } else {
-                    avatarImg.classList.add('hidden');
-                    avatarFallback.classList.remove('hidden');
+
+                    profileImg.src = user.photoURL;
+                    profileImg.classList.remove('hidden');
+                    profileFallback.classList.add('hidden');
                 }
 
                 if (!document.getElementById('empName').value) {
                     document.getElementById('empName').value = user.displayName || user.email.split('@')[0];
                 }
+
+                // Default Date Input for Sales
+                document.getElementById('salesDate').value = new Date().toISOString().slice(0, 10);
 
                 initDatabaseListeners();
             } else {
@@ -305,7 +488,7 @@
             }
         });
 
-        // Google Sign-In Handler
+        // Google Login
         function handleGoogleLogin() {
             auth.signInWithPopup(googleProvider)
                 .then((result) => {
@@ -321,21 +504,27 @@
             auth.signOut().then(() => showToast("Signed out."));
         }
 
-        // Firebase Data Sync
+        // Realtime DB Listeners
         function initDatabaseListeners() {
             db.ref('attendance_logs').on('value', (snapshot) => {
                 const data = snapshot.val();
                 attendanceLogs = data ? Object.values(data).reverse() : [];
-                renderUI();
+                renderAttendanceUI();
             });
 
             db.ref('active_session').on('value', (snapshot) => {
                 activeSession = snapshot.val();
-                renderUI();
+                renderClockUI();
+            });
+
+            db.ref('daily_sales').on('value', (snapshot) => {
+                const data = snapshot.val();
+                salesLogs = data ? Object.values(data).reverse() : [];
+                renderSalesTable();
             });
         }
 
-        // Clock & UI Renderers
+        // Clock Logic
         function updateClock() {
             const now = new Date();
             document.getElementById('liveTime').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -357,7 +546,7 @@
             const empId = document.getElementById('empId').value.trim();
 
             if (!empName || !empId) {
-                showToast("Please provide both Employee Name and ID.", "error");
+                showToast("Please provide Employee Name and ID.", "error");
                 return;
             }
 
@@ -367,6 +556,7 @@
                 db.ref('active_session').set({
                     empName,
                     empId,
+                    userEmail: currentUserEmail,
                     clockInTime: now.toISOString()
                 }).then(() => showToast(`Clocked in: ${empName}`));
             } else {
@@ -381,6 +571,7 @@
                     id: newLogRef.key,
                     empName: activeSession.empName,
                     empId: activeSession.empId,
+                    userEmail: activeSession.userEmail || currentUserEmail,
                     date: clockInDate.toLocaleDateString(),
                     clockIn: clockInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     clockOut: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -388,20 +579,19 @@
                     durationText: `${hrs}h ${mins}m`
                 }).then(() => {
                     db.ref('active_session').remove();
-                    showToast(`Clocked out. Shift duration: ${hrs}h ${mins}m`);
+                    showToast(`Clocked out. Duration: ${hrs}h ${mins}m`);
                 });
             }
         }
 
-        function renderUI() {
+        function renderClockUI() {
             const clockBtn = document.getElementById('clockBtn');
             const btnText = document.getElementById('btnText');
             const statusText = document.getElementById('statusText');
             const statusBanner = document.getElementById('statusBanner');
             const sessionTimer = document.getElementById('sessionTimer');
             const statusBadge = document.getElementById('statusBadge');
-            const empNameInput = document.getElementById('empName');
-            const empIdInput = document.getElementById('empId');
+            const shiftStatusDisplay = document.getElementById('shiftStatusDisplay');
 
             if (activeSession) {
                 btnText.textContent = 'Clock Out';
@@ -413,10 +603,8 @@
 
                 statusBadge.textContent = 'Clocked In';
                 statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-
-                empNameInput.disabled = true;
-                empIdInput.disabled = true;
-                document.getElementById('activeEmpDisplay').textContent = activeSession.empName;
+                shiftStatusDisplay.textContent = 'Active Shift';
+                shiftStatusDisplay.className = 'text-sm font-bold text-emerald-400 mt-1';
             } else {
                 btnText.textContent = 'Clock In';
                 clockBtn.className = 'w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2';
@@ -428,34 +616,25 @@
 
                 statusBadge.textContent = 'Clocked Out';
                 statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700';
-
-                empNameInput.disabled = false;
-                empIdInput.disabled = false;
-                document.getElementById('activeEmpDisplay').textContent = 'None';
+                shiftStatusDisplay.textContent = 'Clocked Out';
+                shiftStatusDisplay.className = 'text-sm font-bold text-slate-300 mt-1';
             }
-
-            renderTable(attendanceLogs);
-
-            document.getElementById('totalShifts').textContent = attendanceLogs.length;
-            const totalMs = attendanceLogs.reduce((acc, curr) => acc + (curr.durationMs || 0), 0);
-            document.getElementById('totalHours').textContent = `${(totalMs / 3600000).toFixed(1)} hrs`;
         }
 
-        function renderTable(logs) {
-            const tbody = document.getElementById('attendanceTableBody');
+        // Render Current User Attendance Only
+        function renderAttendanceUI() {
+            const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
+            const tbody = document.getElementById('myAttendanceTableBody');
             tbody.innerHTML = '';
 
-            if (logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-500 text-xs">No attendance records registered yet.</td></tr>`;
+            if (myLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-500 text-xs">No attendance records found for your account.</td></tr>`;
             } else {
-                logs.forEach(log => {
+                myLogs.forEach(log => {
                     const row = document.createElement('tr');
                     row.className = 'hover:bg-slate-800/40 transition-colors duration-150';
                     row.innerHTML = `
-                        <td class="py-3.5 px-6 font-semibold text-slate-200">
-                            ${log.empName} <span class="text-[10px] font-normal text-slate-500 ml-1">(${log.empId})</span>
-                        </td>
-                        <td class="py-3.5 px-6 text-slate-400">${log.date}</td>
+                        <td class="py-3.5 px-6 font-semibold text-slate-200">${log.date}</td>
                         <td class="py-3.5 px-6"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">${log.clockIn}</span></td>
                         <td class="py-3.5 px-6"><span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-medium">${log.clockOut}</span></td>
                         <td class="py-3.5 px-6 text-right font-mono font-bold text-slate-300">${log.durationText}</td>
@@ -463,23 +642,104 @@
                     tbody.appendChild(row);
                 });
             }
+
+            document.getElementById('myTotalShifts').textContent = myLogs.length;
+            const totalMs = myLogs.reduce((acc, curr) => acc + (curr.durationMs || 0), 0);
+            document.getElementById('myTotalHours').textContent = `${(totalMs / 3600000).toFixed(1)} hrs`;
         }
 
-        function filterTable() {
-            const term = document.getElementById('tableSearch').value.toLowerCase();
-            const filtered = attendanceLogs.filter(log => 
-                log.empName.toLowerCase().includes(term) || log.empId.toLowerCase().includes(term)
-            );
-            renderTable(filtered);
+        // Sales Functionality
+        function handleSalesSubmit(e) {
+            e.preventDefault();
+            const date = document.getElementById('salesDate').value;
+            const amount = parseFloat(document.getElementById('salesAmount').value);
+            const notes = document.getElementById('salesNotes').value.trim();
+
+            const newSalesRef = db.ref('daily_sales').push();
+            newSalesRef.set({
+                id: newSalesRef.key,
+                date,
+                amount,
+                notes: notes || 'N/A',
+                submittedBy: auth.currentUser ? (auth.currentUser.displayName || auth.currentUser.email) : 'Staff'
+            }).then(() => {
+                showToast("Daily sales report submitted!");
+                document.getElementById('salesAmount').value = '';
+                document.getElementById('salesNotes').value = '';
+            });
+        }
+
+        function renderSalesTable() {
+            const tbody = document.getElementById('salesTableBody');
+            tbody.innerHTML = '';
+
+            if (salesLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-500 text-xs">No sales entries logged yet.</td></tr>`;
+            } else {
+                salesLogs.forEach(s => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-800/40 transition-colors';
+                    row.innerHTML = `
+                        <td class="py-3.5 px-6 text-slate-300 font-medium">${s.date}</td>
+                        <td class="py-3.5 px-6 text-indigo-400 font-semibold">${s.submittedBy}</td>
+                        <td class="py-3.5 px-6 text-emerald-400 font-mono font-bold">RM ${parseFloat(s.amount).toFixed(2)}</td>
+                        <td class="py-3.5 px-6 text-slate-400">${s.notes}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        // Payslip PDF Export
+        function downloadPayslipPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const month = document.getElementById('payslipMonth').value;
+            const year = document.getElementById('payslipYear').value;
+            const user = auth.currentUser;
+
+            doc.setFontSize(20);
+            doc.text("OFFICIAL SALARY PAYSLIP", 105, 20, null, null, "center");
+            
+            doc.setFontSize(10);
+            doc.text(`Generated Date: ${new Date().toLocaleDateString()}`, 105, 28, null, null, "center");
+
+            doc.setFontSize(12);
+            doc.text(`Employee Name: ${user ? (user.displayName || 'Staff Member') : 'Staff Member'}`, 20, 45);
+            doc.text(`Email Address: ${currentUserEmail}`, 20, 53);
+            doc.text(`Pay Period: ${month} ${year}`, 20, 61);
+
+            doc.line(20, 68, 190, 68);
+
+            doc.setFontSize(11);
+            doc.text("Earnings Description", 20, 78);
+            doc.text("Amount (MYR)", 150, 78);
+            
+            doc.setFontSize(10);
+            doc.text("Basic Salary", 20, 88);
+            doc.text("RM 2,800.00", 150, 88);
+            
+            doc.text("Allowance / Overtime", 20, 96);
+            doc.text("RM 350.00", 150, 96);
+
+            doc.line(20, 104, 190, 104);
+
+            doc.setFont("helvetica", "bold");
+            doc.text("Total Net Salary Payable:", 20, 114);
+            doc.text("RM 3,150.00", 150, 114);
+
+            doc.save(`Payslip_${month}_${year}.pdf`);
+            showToast("Payslip downloaded successfully!");
         }
 
         function exportCSV() {
-            if (attendanceLogs.length === 0) return showToast('No data to export.', 'error');
-            let csv = "data:text/csv;charset=utf-8,Employee,ID,Date,Clock In,Clock Out,Duration\n";
-            attendanceLogs.forEach(l => { csv += `"${l.empName}","${l.empId}","${l.date}","${l.clockIn}","${l.clockOut}","${l.durationText}"\n`; });
+            const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
+            if (myLogs.length === 0) return showToast('No data to export.', 'error');
+            let csv = "data:text/csv;charset=utf-8,Date,Clock In,Clock Out,Duration\n";
+            myLogs.forEach(l => { csv += `"${l.date}","${l.clockIn}","${l.clockOut}","${l.durationText}"\n`; });
             const link = document.createElement('a');
             link.setAttribute('href', encodeURI(csv));
-            link.setAttribute('download', `staff_attendance_${new Date().toISOString().slice(0, 10)}.csv`);
+            link.setAttribute('download', `my_attendance_${new Date().toISOString().slice(0, 10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
