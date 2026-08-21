@@ -497,23 +497,74 @@
             });
         }
 
-        // Clock Logic
+        // Clock Logic - Continuous 1-second loop
         function updateClock() {
             const now = new Date();
-            document.getElementById('liveTime').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            document.getElementById('liveDate').textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-
-            if (activeSession) {
-                const elapsedMs = now - new Date(activeSession.clockInTime);
-                const hrs = Math.floor(elapsedMs / 3600000);
-                const mins = Math.floor((elapsedMs % 3600000) / 60000);
-                const secs = Math.floor((elapsedMs % 60000) / 1000);
-                document.getElementById('sessionTimer').textContent = 
-                    `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        
+            // 1. Live Time & Date Headers
+            const liveTimeEl = document.getElementById('liveTime');
+            const liveDateEl = document.getElementById('liveDate');
+            if (liveTimeEl) liveTimeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (liveDateEl) liveDateEl.textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        
+            // 2. Timer & Status Banner Elements
+            const timerEl = document.getElementById('sessionTimer');
+            const statusBanner = document.getElementById('statusBanner');
+            const statusText = document.getElementById('statusText');
+            const statusBadge = document.getElementById('statusBadge');
+            const clockBtn = document.getElementById('clockBtn');
+            const btnText = document.getElementById('btnText');
+        
+            if (!timerEl) return;
+        
+            if (activeSession && activeSession.clockInTime) {
+                // --- ON DUTY STATE (Green-Yellow / Lime Highlight) ---
+                const elapsedMs = Math.max(0, now - new Date(activeSession.clockInTime));
+                const hrs = String(Math.floor(elapsedMs / 3600000)).padStart(2, '0');
+                const mins = String(Math.floor((elapsedMs % 3600000) / 60000)).padStart(2, '0');
+                const secs = String(Math.floor((elapsedMs % 60000) / 1000)).padStart(2, '0');
+        
+                timerEl.textContent = `${hrs}:${mins}:${secs}`;
+                timerEl.className = "font-mono text-4xl font-black text-lime-400 drop-shadow-[0_0_12px_rgba(163,230,53,0.4)] my-1 tracking-wider";
+        
+                if (statusBanner) statusBanner.className = "p-6 rounded-2xl bg-lime-950/20 border border-lime-500/40 text-center mb-6 transition-all duration-300 shadow-lg shadow-lime-950/50";
+                if (statusText) statusText.textContent = "ON DUTY • Active Shift Duration";
+                
+                if (statusBadge) {
+                    statusBadge.textContent = "ON DUTY";
+                    statusBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-lime-500/20 text-lime-400 border border-lime-500/40 animate-pulse";
+                }
+        
+                if (clockBtn) {
+                    clockBtn.className = "w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-rose-600 hover:bg-rose-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2";
+                    if (btnText) btnText.textContent = "Clock Out";
+                }
+        
+            } else {
+                // --- OFF DUTY STATE (Continuous Clock in Muted Slate) ---
+                const hrs = String(now.getHours()).padStart(2, '0');
+                const mins = String(now.getMinutes()).padStart(2, '0');
+                const secs = String(now.getSeconds()).padStart(2, '0');
+        
+                timerEl.textContent = `${hrs}:${mins}:${secs}`;
+                timerEl.className = "font-mono text-4xl font-bold text-slate-500 my-1 tracking-wider";
+        
+                if (statusBanner) statusBanner.className = "p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6 transition-all duration-300";
+                if (statusText) statusText.textContent = "OFF DUTY • Ready to clock in";
+        
+                if (statusBadge) {
+                    statusBadge.textContent = "OFFLINE";
+                    statusBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700";
+                }
+        
+                if (clockBtn) {
+                    clockBtn.className = "w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2";
+                    if (btnText) btnText.textContent = "Clock In";
+                }
             }
         }
         setInterval(updateClock, 1000);
-
+        
         // Clock In/Out using Google Authentication credentials
         function toggleClock() {
             const user = auth.currentUser;
@@ -521,26 +572,28 @@
                 showToast("No active Google session found.", "error");
                 return;
             }
-
-            // Automatically assign Name and ID from Google account
+        
             const empName = user.displayName || user.email.split('@')[0];
-            const empId = user.uid.substring(0, 8).toUpperCase(); // Uses the first 8 characters of Google UID
+            const empId = user.uid.substring(0, 8).toUpperCase();
             const now = new Date();
-
+        
             if (!activeSession) {
                 db.ref('active_session').set({
                     empName,
                     empId,
                     userEmail: currentUserEmail,
                     clockInTime: now.toISOString()
-                }).then(() => showToast(`Clocked in: ${empName}`));
+                }).then(() => {
+                    showToast(`Clocked in: ${empName}`);
+                    updateClock();
+                });
             } else {
                 const clockInDate = new Date(activeSession.clockInTime);
                 const diffMs = now - clockInDate;
                 const totalMinutes = Math.max(1, Math.round(diffMs / 60000));
                 const hrs = Math.floor(totalMinutes / 60);
                 const mins = totalMinutes % 60;
-
+        
                 const newLogRef = db.ref('attendance_logs').push();
                 newLogRef.set({
                     id: newLogRef.key,
@@ -555,6 +608,7 @@
                 }).then(() => {
                     db.ref('active_session').remove();
                     showToast(`Clocked out. Duration: ${hrs}h ${mins}m`);
+                    updateClock();
                 });
             }
         }
