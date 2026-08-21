@@ -607,18 +607,52 @@
             const empName = user.displayName || user.email.split('@')[0];
             const empId = user.uid.substring(0, 8).toUpperCase();
             const now = new Date();
+            
+            // Calculate current time in total minutes from midnight
+            const currentMinutes = (now.getHours() * 60) + now.getMinutes();
+        
+            // Time boundaries (in minutes)
+            const time800AM  = 8 * 60;        // 480 mins (08:00)
+            const time930AM  = 9 * 60 + 30;   // 570 mins (09:30)
+            const time1100AM = 11 * 60;       // 660 mins (11:00)
+            const time800PM  = 20 * 60;       // 1200 mins (20:00)
+            const time900PM  = 21 * 60;       // 1260 mins (21:00)
         
             if (!activeSession) {
+                // --- CLOCK IN WINDOW RULES ---
+                let punctualityStatus = "";
+                let statusColor = "";
+        
+                if (currentMinutes >= time800AM && currentMinutes <= time930AM) {
+                    punctualityStatus = "ON TIME";
+                    statusColor = "green";
+                } else if (currentMinutes > time930AM && currentMinutes <= time1100AM) {
+                    punctualityStatus = "LATE";
+                    statusColor = "red";
+                } else {
+                    showToast("Clock-in is only allowed between 8:00 AM and 11:00 AM.", "error");
+                    return;
+                }
+        
                 db.ref('active_session').set({
                     empName,
                     empId,
                     userEmail: currentUserEmail,
-                    clockInTime: now.toISOString()
+                    clockInTime: now.toISOString(),
+                    punctualityStatus,
+                    statusColor
                 }).then(() => {
-                    showToast(`Clocked in: ${empName}`);
+                    showToast(`Clocked in (${punctualityStatus}): ${empName}`);
                     updateClock();
                 });
+        
             } else {
+                // --- CLOCK OUT WINDOW RULES ---
+                if (currentMinutes < time800PM || currentMinutes > time900PM) {
+                    showToast("Clock-out is only allowed between 8:00 PM and 9:00 PM.", "error");
+                    return;
+                }
+        
                 const clockInDate = new Date(activeSession.clockInTime);
                 const diffMs = now - clockInDate;
                 const totalMinutes = Math.max(1, Math.round(diffMs / 60000));
@@ -635,7 +669,9 @@
                     clockIn: clockInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     clockOut: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     durationMs: diffMs,
-                    durationText: `${hrs}h ${mins}m`
+                    durationText: `${hrs}h ${mins}m`,
+                    punctualityStatus: activeSession.punctualityStatus || 'ON TIME',
+                    statusColor: activeSession.statusColor || 'green'
                 }).then(() => {
                     db.ref('active_session').remove();
                     showToast(`Clocked out. Duration: ${hrs}h ${mins}m`);
@@ -809,16 +845,32 @@
         
             filtered.forEach(log => {
                 const row = document.createElement('div');
-                row.className = 'p-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl flex items-center justify-between text-xs';
+                // Example snippet inside your log rendering loop:
+                const isLate = log.punctualityStatus === 'LATE' || log.statusColor === 'red';
+                
+                const borderStyle = isLate 
+                    ? 'border-rose-500/50 bg-rose-950/20' 
+                    : 'border-emerald-500/50 bg-emerald-950/20';
+                
+                const badgeStyle = isLate 
+                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/40' 
+                    : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40';
+                
+                row.className = `p-3 border rounded-2xl flex items-center justify-between text-xs ${borderStyle}`;
                 row.innerHTML = `
                     <div>
-                        <span class="text-slate-200 font-semibold block">${log.date}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-200 font-semibold block">${log.date}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold border ${badgeStyle}">
+                                ${log.punctualityStatus || 'ON TIME'}
+                            </span>
+                        </div>
                         <span class="text-[10px] text-slate-400">Duration: ${log.durationText || 'N/A'}</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">${log.clockIn}</span>
+                    <div class="flex items-center gap-2 font-mono">
+                        <span class="px-2 py-1 rounded-lg bg-slate-900 text-slate-300 border border-slate-800">${log.clockIn}</span>
                         <span class="text-slate-600">-</span>
-                        <span class="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono">${log.clockOut}</span>
+                        <span class="px-2 py-1 rounded-lg bg-slate-900 text-slate-300 border border-slate-800">${log.clockOut}</span>
                     </div>
                 `;
                 container.appendChild(row);
