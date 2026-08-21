@@ -516,10 +516,11 @@
                 activeSession = snapshot.val();
                 renderClockUI();
             });
-
+        
             db.ref('daily_sales').on('value', (snapshot) => {
                 const data = snapshot.val();
-                salesLogs = data ? Object.values(data).reverse() : [];
+                // Convert object entries to array and sort descending by date
+                salesLogs = data ? Object.values(data).sort((a, b) => b.date.localeCompare(a.date)) : [];
                 renderSalesTable();
             });
         }
@@ -648,33 +649,47 @@
             document.getElementById('myTotalHours').textContent = `${(totalMs / 3600000).toFixed(1)} hrs`;
         }
 
-        // Sales Functionality with "Once Per Day" Rule
-        function handleSalesSubmit(e) {
+        // 1. Updated handleSalesSubmit with direct Firebase date-key checking
+        async function handleSalesSubmit(e) {
             e.preventDefault();
             const date = document.getElementById('salesDate').value;
             const amount = parseFloat(document.getElementById('salesAmount').value);
             const notes = document.getElementById('salesNotes').value.trim();
-
-            // RULE: Prevent duplicate submissions for the same date
-            const existingEntry = salesLogs.find(s => s.date === date);
-            if (existingEntry) {
-                showToast(`Daily sale for ${date} was already submitted by ${existingEntry.submittedBy}.`, 'error');
+        
+            if (!date || isNaN(amount)) {
+                showToast("Please enter a valid date and amount.", "error");
                 return;
             }
-
-            const newSalesRef = db.ref('daily_sales').push();
-            newSalesRef.set({
-                id: newSalesRef.key,
-                date,
-                amount,
-                notes: notes || 'N/A',
-                submittedBy: auth.currentUser ? (auth.currentUser.displayName || auth.currentUser.email) : 'Staff',
-                userEmail: currentUserEmail
-            }).then(() => {
+        
+            const salesRef = db.ref(`daily_sales/${date}`);
+        
+            try {
+                // Query Firebase directly for an existing record on this exact date
+                const snapshot = await salesRef.once('value');
+                
+                if (snapshot.exists()) {
+                    const existing = snapshot.val();
+                    showToast(`Daily sale for ${date} was already submitted by ${existing.submittedBy}!`, 'error');
+                    return;
+                }
+        
+                // Save directly under the date key to enforce uniqueness in the database
+                await salesRef.set({
+                    id: date,
+                    date,
+                    amount,
+                    notes: notes || 'N/A',
+                    submittedBy: auth.currentUser ? (auth.currentUser.displayName || auth.currentUser.email) : 'Staff',
+                    userEmail: currentUserEmail,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                });
+        
                 showToast("Daily sales report submitted!");
                 document.getElementById('salesAmount').value = '';
                 document.getElementById('salesNotes').value = '';
-            });
+            } catch (err) {
+                showToast("Failed to save report: " + err.message, "error");
+            }
         }
 
         function renderSalesTable() {
