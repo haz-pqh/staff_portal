@@ -1126,31 +1126,86 @@
             renderSelectedDateLogs();
         }
 
-        // Pre-defined Flavor List matching Image 2
+        // Pre-defined Flavor List matching physical paper sheet
         const flavorItems = ['Cheese', 'Korean', 'Garlic', 'Furikake', 'Togarashi', 'Coleslaw'];
         
-        // Render Inventory Form Rows
+        // Render Inventory Form Rows with Auto-Calculation Listeners
         function initFlavorInventoryRows() {
             const tbody = document.getElementById('flavorInventoryRows');
             if (!tbody) return;
         
             tbody.innerHTML = '';
             flavorItems.forEach(item => {
+                const isColeslaw = item.toLowerCase() === 'coleslaw';
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-900/40 transition';
+                
                 row.innerHTML = `
                     <td class="p-3 font-medium text-slate-200">${item}</td>
-                    <td class="p-2"><input type="number" data-item="${item}" data-col="prevStock" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"></td>
-                    <td class="p-2"><input type="number" data-item="${item}" data-col="newStock" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"></td>
-                    <td class="p-2"><input type="number" data-item="${item}" data-col="sold" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"></td>
-                    <td class="p-2"><input type="number" data-item="${item}" data-col="promoFree" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"></td>
-                    <td class="p-2"><input type="number" data-item="${item}" data-col="balance" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"></td>
+                    
+                    <!-- Prev Stock -->
+                    <td class="p-2">
+                        <input type="number" data-item="${item}" data-col="prevStock" placeholder="0" 
+                            ${isColeslaw ? 'disabled class="w-full bg-slate-950/50 opacity-30 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-slate-600 cursor-not-allowed"' : 'class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"'} 
+                            oninput="calculateSold('${item}')">
+                    </td>
+        
+                    <!-- New Stock -->
+                    <td class="p-2">
+                        <input type="number" data-item="${item}" data-col="newStock" placeholder="0" 
+                            class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500" 
+                            oninput="calculateSold('${item}')">
+                    </td>
+        
+                    <!-- SOLD (Auto-Calculated Readonly Input) -->
+                    <td class="p-2">
+                        <input type="number" data-item="${item}" data-col="sold" placeholder="0" readonly 
+                            class="w-full bg-slate-950 border border-emerald-500/40 rounded-lg p-1.5 text-center text-xs font-bold text-emerald-400 focus:outline-none cursor-not-allowed">
+                    </td>
+        
+                    <!-- Promo Free -->
+                    <td class="p-2">
+                        <input type="number" data-item="${item}" data-col="promoFree" placeholder="0" 
+                            ${isColeslaw ? 'disabled class="w-full bg-slate-950/50 opacity-30 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-slate-600 cursor-not-allowed"' : 'class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"'} 
+                            oninput="calculateSold('${item}')">
+                    </td>
+        
+                    <!-- Balance -->
+                    <td class="p-2">
+                        <input type="number" data-item="${item}" data-col="balance" placeholder="0" 
+                            class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500" 
+                            oninput="calculateSold('${item}')">
+                    </td>
                 `;
                 tbody.appendChild(row);
             });
         }
         
-        // Call on page load
+        // Auto-Calculation Logic
+        function calculateSold(item) {
+            const prevStock = parseFloat(document.querySelector(`input[data-item="${item}"][data-col="prevStock"]`)?.value) || 0;
+            const newStock = parseFloat(document.querySelector(`input[data-item="${item}"][data-col="newStock"]`)?.value) || 0;
+            const promoFree = parseFloat(document.querySelector(`input[data-item="${item}"][data-col="promoFree"]`)?.value) || 0;
+            const balance = parseFloat(document.querySelector(`input[data-item="${item}"][data-col="balance"]`)?.value) || 0;
+        
+            const soldInput = document.querySelector(`input[data-item="${item}"][data-col="sold"]`);
+            if (!soldInput) return;
+        
+            let sold = 0;
+        
+            if (item.toLowerCase() === 'coleslaw') {
+                // Coleslaw Formula: (New Stock) - (Balance)
+                sold = newStock - balance;
+            } else {
+                // Standard Flavor Formula: ((Prev Stock) + (New Stock)) - ((Promo Free) + (Balance))
+                sold = (prevStock + newStock) - (promoFree + balance);
+            }
+        
+            // Set auto calculated value
+            soldInput.value = sold;
+        }
+        
+        // Call on DOM Load
         document.addEventListener('DOMContentLoaded', initFlavorInventoryRows);
         
         // Submit Complete Form Data to Firebase
