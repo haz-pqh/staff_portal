@@ -341,8 +341,6 @@
 
         // Whitelist of authorized emails
         const ALLOWED_EMAILS = [
-            "idham_hemzal@gmail.com",
-            "zharul_hemzal@gmail.com",
             "hassanhazril@gmail.com"
         ];
 
@@ -403,11 +401,16 @@
 
                 // Update UI Profile Info
                 const userName = user.displayName || user.email.split('@')[0];
-                document.getElementById('clockTerminalUser').textContent = `${userName} (${user.uid.substring(0, 8)})`;
-                document.getElementById('userDisplayName').textContent = user.displayName || user.email.split('@')[0];
+                document.getElementById('userDisplayName').textContent = userName;
                 document.getElementById('userEmailDisplay').textContent = user.email;
-                document.getElementById('profileName').textContent = user.displayName || user.email.split('@')[0];
+                document.getElementById('profileName').textContent = userName;
                 document.getElementById('profileEmail').textContent = user.email;
+                
+                // Update Clocking Terminal display badge
+                const clockUserBadge = document.getElementById('clockTerminalUser');
+                if (clockUserBadge) {
+                    clockUserBadge.textContent = `${userName} (${user.uid.substring(0, 8)})`;
+                }
 
                 const avatarImg = document.getElementById('userAvatarImg');
                 const avatarFallback = document.getElementById('userAvatarFallback');
@@ -422,10 +425,6 @@
                     profileImg.src = user.photoURL;
                     profileImg.classList.remove('hidden');
                     profileFallback.classList.add('hidden');
-                }
-
-                if (!document.getElementById('empName').value) {
-                    document.getElementById('empName').value = user.displayName || user.email.split('@')[0];
                 }
 
                 // Default Date Input for Sales
