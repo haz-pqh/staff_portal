@@ -1144,8 +1144,10 @@
             }
         }
         
-        // Submit Leave Application
-        function handleLeaveSubmit(e) {
+        // Ensure Firebase Storage is initialized at the top of your script
+        const storage = firebase.storage();
+        
+        async function handleLeaveSubmit(e) {
             e.preventDefault();
             const user = auth.currentUser;
             if (!user) {
@@ -1159,24 +1161,54 @@
             const reason = document.getElementById('leaveReason').value;
             const fileInput = document.getElementById('mcFile');
         
-            if (leaveType === 'medical' && (!fileInput.files || fileInput.files.length === 0)) {
-                showToast("Please attach your Medical Certificate (MC).", "error");
-                return;
+            let mcFileUrl = null;
+            let fileName = null;
+        
+            // Handle Medical Certificate Upload
+            if (leaveType === 'medical') {
+                const file = fileInput.files[0];
+                if (!file) {
+                    showToast("Please attach your Medical Certificate (MC).", "error");
+                    return;
+                }
+        
+                try {
+                    showToast("Uploading MC document...", "info");
+                    
+                    // Generate unique path in Storage
+                    const timestamp = Date.now();
+                    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+                    const fileRef = storage.ref(`mc_documents/${timestamp}_${cleanFileName}`);
+        
+                    // Upload File & Get Download URL
+                    const snapshot = await fileRef.put(file);
+                    mcFileUrl = await snapshot.ref.getDownloadURL();
+                    fileName = file.name;
+        
+                } catch (error) {
+                    console.error("Storage Upload Error:", error);
+                    showToast("File upload failed: " + error.message, "error");
+                    return;
+                }
             }
         
+            // Prepare Request Record for Realtime Database
             const leaveRequest = {
                 empName: user.displayName || user.email.split('@')[0],
+                empId: user.uid.substring(0, 8).toUpperCase(),
                 userEmail: currentUserEmail,
                 leaveType,
                 startDate,
                 endDate,
                 reason,
                 hasAttachment: leaveType === 'medical',
-                status: 'PENDING',
+                mcFileUrl: mcFileUrl,         // Link for Admin Dashboard preview
+                mcFileName: fileName,         // Original file name
+                status: 'PENDING',            // PENDING -> APPROVED / REJECTED by Admin
                 appliedAt: firebase.database.ServerValue.TIMESTAMP
             };
         
-            // Save to Firebase Realtime DB
+            // Save to Firebase Realtime Database
             db.ref('leave_requests').push(leaveRequest).then(() => {
                 showToast("Leave application submitted successfully!");
                 closeLeaveModal();
