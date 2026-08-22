@@ -11,13 +11,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Progressive Web App (PWA) & Mobile Meta Tags -->
-    <meta name="theme-color" content="#FFD500">
+    <meta name="theme-color" content="#D1232A">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Hemzal Staff">
     <link id="manifest-link" rel="manifest">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23FFEAEA'/><path d='M50 20C35 20 28 35 28 50C28 65 40 75 55 75C68 75 75 62 75 50' stroke='%23d1232a' stroke-width='7'/></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23FFD500'/><path d='M50 20C35 20 28 35 28 50C28 65 40 75 55 75C68 75 75 62 75 50' stroke='%23D1232A' stroke-width='7' fill='none'/></svg>">
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -582,22 +582,24 @@
             const manifestObj = {
                 name: "Hemzal Staff Portal",
                 short_name: "Hemzal Staff",
-                start_url: ".",
+                start_url: "/",
                 display: "standalone",
                 background_color: "#FFD500",
-                theme_color: "#d1232a",
+                theme_color: "#D1232A",
                 description: "Hemzal Crispy Chicken Staff Portal",
                 icons: [
                     {
-                        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23FFEAEA'/><path d='M50 20C35 20 28 35 28 50C28 65 40 75 55 75C68 75 75 62 75 50' stroke='%23d1232a' stroke-width='7'/></svg>",
+                        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23FFD500'/><path d='M50 20C35 20 28 35 28 50C28 65 40 75 55 75C68 75 75 62 75 50' stroke='%23D1232A' stroke-width='7' fill='none'/></svg>",
                         sizes: "192x192 512x512",
-                        type: "image/svg+xml"
+                        type: "image/svg+xml",
+                        purpose: "any maskable"
                     }
                 ]
             };
+        
             const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
             document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(manifestBlob));
-
+        
             if ('serviceWorker' in navigator) {
                 const swCode = `
                     self.addEventListener('install', (e) => self.skipWaiting());
@@ -610,7 +612,7 @@
                 navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(err => console.log('SW reg error:', err));
             }
         }
-
+        
         let deferredPWAInstallPrompt = null;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -618,8 +620,9 @@
             const installBtn = document.getElementById('pwa-install-btn');
             if (installBtn) installBtn.style.display = 'inline-flex';
         });
-
+        
         function triggerAppInstall() {
+            const installBtn = document.getElementById('pwa-install-btn');
             if (deferredPWAInstallPrompt) {
                 deferredPWAInstallPrompt.prompt();
                 deferredPWAInstallPrompt.userChoice.then((choice) => {
@@ -627,7 +630,7 @@
                         showToast('App installed on your device!', true);
                     }
                     deferredPWAInstallPrompt = null;
-                    document.getElementById('pwa-install-btn').style.display = 'none';
+                    if (installBtn) installBtn.style.display = 'none';
                 });
             } else {
                 showToast('To install: Tap browser menu & select "Add to Home Screen"', true);
