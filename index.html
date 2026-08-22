@@ -971,18 +971,24 @@
                 let dotColor = '';
         
                 if (log) {
-                    const status = (log.status || log.type || 'attended').toLowerCase();
-                    if (status === 'mc' || status === 'off' || status === 'leave') {
+                    const status = (log.punctualityStatus || log.status || log.type || '').toLowerCase();
+                    const isRedColor = log.statusColor === 'red';
+        
+                    if (status === 'absent' || isRedColor) {
+                        // Red Highlight: ABSENT
+                        statusStyle = 'bg-rose-500/20 text-rose-300 border border-rose-500/50 font-bold';
+                        dotColor = 'bg-rose-400';
+                    } else if (status === 'mc' || status === 'off' || status === 'leave') {
                         // Yellow Highlight: MC / Off Day
                         statusStyle = 'bg-amber-500/20 text-amber-300 border border-amber-500/50 font-bold';
                         dotColor = 'bg-amber-400';
                     } else {
-                        // Green Highlight: Attended
+                        // Green Highlight: Attended / On Time / Late
                         statusStyle = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-bold';
                         dotColor = 'bg-emerald-400';
                     }
                 } else if (dateObj < today) {
-                    // Red Highlight: Absent (Past day with no attendance entry)
+                    // Red Highlight: Unlogged Past Days
                     statusStyle = 'bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold';
                     dotColor = 'bg-rose-400';
                 } else {
@@ -1157,10 +1163,18 @@
                         createdAt: firebase.database.ServerValue.TIMESTAMP
                     });
                 })
+                // Inside checkAutoAbsentStatus()...
                 .then(() => {
                     console.log("[Auto-Absent Check] ABSENT record successfully stored in Firebase.");
                     if (typeof showToast === 'function') {
                         showToast("You have been marked ABSENT for today (past 11:00 AM).", "error");
+                    }
+                
+                    // --- ADD THIS: Re-fetch or re-render your calendar UI ---
+                    if (typeof renderCalendar === 'function') {
+                        renderCalendar(); 
+                    } else if (typeof fetchAttendanceLogs === 'function') {
+                        fetchAttendanceLogs();
                     }
                 })
                 .catch((error) => {
