@@ -10,16 +10,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- PWA Primary Meta Tags -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4f46e5">
-    
-    <!-- iOS / Apple Mobile Web App Tags -->
+    <!-- Progressive Web App (PWA) & Mobile Meta Tags -->
+    <meta name="theme-color" content="#FFD500">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Staff Portal">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/906/906343.png">
-
+    <meta name="apple-mobile-web-app-title" content="Hemzal Staff">
+    <link id="manifest-link" rel="manifest">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23FFEAEA'/><path d='M50 20C35 20 28 35 28 50C28 65 40 75 55 75C68 75 75 62 75 50' stroke='%23d1232a' stroke-width='7'/></svg>">
+    
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -45,6 +44,27 @@
 
     <!-- jsPDF for Payslip PDF Downloads -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        .btn-pwa-install {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background-color: #1e1e1e;
+            color: #FFD500;
+            border: 2px solid #FFD500;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-top: 10px;
+            transition: transform 0.2s ease;
+        }
+        .btn-pwa-install:active { transform: scale(0.95); }
+    </style>
 </head>
 <body class="h-full text-slate-100 font-sans antialiased bg-slate-950 selection:bg-indigo-500 selection:text-white">
 
@@ -63,6 +83,9 @@
                 </div>
                 <h1 class="text-2xl font-bold text-white tracking-tight">Welcome Back</h1>
                 <p class="text-xs text-slate-400 mt-1">Sign in with your authorized Google account</p>
+                <button id="pwa-install-btn" class="btn-pwa-install" onclick="triggerAppInstall()">
+                    <i class="fa-solid fa-download"></i> Install App to Phone
+                </button>
             </div>
 
             <button type="button" onclick="handleGoogleLogin()" 
@@ -555,13 +578,60 @@
     
     <!-- Script Logic -->
     <script>
-        // Register PWA Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('PWA Service Worker registered:', reg.scope))
-                    .catch(err => console.error('PWA Service Worker registration failed:', err));
-            });
+        function initPWAEngine() {
+            const manifestObj = {
+                name: "Hemzal Staff Portal",
+                short_name: "Hemzal Staff",
+                start_url: ".",
+                display: "standalone",
+                background_color: "#FFD500",
+                theme_color: "#d1232a",
+                description: "Hemzal Crispy Chicken Staff Portal",
+                icons: [
+                    {
+                        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23FFEAEA'/><path d='M50 20C35 20 28 35 28 50C28 65 40 75 55 75C68 75 75 62 75 50' stroke='%23d1232a' stroke-width='7'/></svg>",
+                        sizes: "192x192 512x512",
+                        type: "image/svg+xml"
+                    }
+                ]
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+            document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(manifestBlob));
+
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    self.addEventListener('install', (e) => self.skipWaiting());
+                    self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+                    self.addEventListener('fetch', (e) => {
+                        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                    });
+                `;
+                const swBlob = new Blob([swCode], { type: 'application/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(err => console.log('SW reg error:', err));
+            }
+        }
+
+        let deferredPWAInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPWAInstallPrompt = e;
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (installBtn) installBtn.style.display = 'inline-flex';
+        });
+
+        function triggerAppInstall() {
+            if (deferredPWAInstallPrompt) {
+                deferredPWAInstallPrompt.prompt();
+                deferredPWAInstallPrompt.userChoice.then((choice) => {
+                    if (choice.outcome === 'accepted') {
+                        showToast('App installed on your device!', true);
+                    }
+                    deferredPWAInstallPrompt = null;
+                    document.getElementById('pwa-install-btn').style.display = 'none';
+                });
+            } else {
+                showToast('To install: Tap browser menu & select "Add to Home Screen"', true);
+            }
         }
 
         // 1. FIREBASE CONFIGURATION
@@ -1441,6 +1511,8 @@
             if (form) {
                 form.addEventListener('input', calculateTotalDailySales);
             }
+            
+            initPWAEngine();
         });
         
         // Call on DOM Load
