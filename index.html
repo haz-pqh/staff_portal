@@ -1428,14 +1428,38 @@
         
         function handleSalesSubmit(e) {
             e.preventDefault();
-        
+
             const user = auth.currentUser;
             if (!user) {
                 showToast("Please login first.", "error");
                 return;
             }
-        
-            // 1. Gather Flavor Table Data
+
+            const empEmail = (user.email || currentUserEmail || '').toLowerCase();
+            const now = new Date();
+
+            // 1. ABSENT GUARD RULE: Check if staff is marked ABSENT today
+            const todayLog = attendanceLogs.find(log => {
+                const parsedDate = parseLogDate(log.date);
+                const isUserMatch = (log.userEmail || '').toLowerCase() === empEmail;
+                const isTodayMatch = parsedDate && 
+                    parsedDate.getFullYear() === now.getFullYear() && 
+                    parsedDate.getMonth() === now.getMonth() && 
+                    parsedDate.getDate() === now.getDate();
+                return isUserMatch && isTodayMatch;
+            });
+
+            if (todayLog) {
+                const status = (todayLog.punctualityStatus || todayLog.status || '').toLowerCase();
+                const isRedStatus = todayLog.statusColor === 'red';
+
+                if (status === 'absent' || isRedStatus) {
+                    showToast("Access Denied: You are marked ABSENT today and cannot submit daily sales.", "error");
+                    return; // Block submission completely
+                }
+            }
+
+            // 2. Gather Flavor Table Data
             const inventoryData = {};
             flavorItems.forEach(item => {
                 inventoryData[item] = {
@@ -1446,23 +1470,23 @@
                     balance: Number(document.querySelector(`input[data-item="${item}"][data-col="balance"]`)?.value || 0),
                 };
             });
-        
-            // 2. Build Payload (Includes totalDailySales)
+
+            // 3. Build Payload
             const salesReportPayload = {
                 submittedBy: user.displayName || user.email.split('@')[0],
-                userEmail: currentUserEmail,
+                userEmail: empEmail,
                 timestamp: firebase.database.ServerValue.TIMESTAMP,
-        
-                // --- ADD THIS LINE TO STORE THE TOTAL IN FIREBASE ---
-                totalDailySales: calculateTotalDailySales(), 
-        
+
+                // Total Sales Amount
+                totalDailySales: typeof calculateTotalDailySales === 'function' ? calculateTotalDailySales() : 0,
+
                 // General Info
                 cawangan: document.getElementById('salesCawangan').value,
                 date: document.getElementById('salesDate').value,
                 jumlahBag: document.getElementById('salesJumlahBag').value,
                 pettyCash: parseFloat(document.getElementById('salesPettyCash').value || 0),
                 salesCash: parseFloat(document.getElementById('salesSalesCash').value || 0),
-        
+
                 // Platform Sales
                 platforms: {
                     misi: parseFloat(document.getElementById('salesMisi').value || 0),
@@ -1471,7 +1495,7 @@
                     grabFood: parseFloat(document.getElementById('salesGrabFood').value || 0),
                     shopeeFood: parseFloat(document.getElementById('salesShopeeFood').value || 0),
                 },
-        
+
                 // Operational Expenses
                 expenses: {
                     gas: parseFloat(document.getElementById('expGas').value || 0),
@@ -1482,7 +1506,7 @@
                     minyakMasak: document.getElementById('expMinyakMasak').value,
                     staffMeal: document.getElementById('expStaffMeal').value,
                 },
-        
+
                 // Wastage & QC
                 qualityAndWastage: {
                     ayamTakHabis: document.getElementById('wasteAyamTakHabis').value,
@@ -1492,23 +1516,52 @@
                     loyalKad: document.getElementById('qLoyalKad').value,
                     promo10Pcs: document.getElementById('qPromo10Pcs').value,
                 },
-        
+
                 catatan: document.getElementById('salesCatatan').value,
                 inventoryTracker: inventoryData
             };
-        
-            // 3. Push Record to Firebase
+
+            // 4. Push Record to Firebase
             db.ref('sales_updates').push(salesReportPayload).then(() => {
                 showToast("Daily sales report submitted successfully!");
                 document.getElementById('dailySalesForm').reset();
                 initFlavorInventoryRows();
                 
-                // Reset displayed total
                 const displayEl = document.getElementById('totalDailySalesDisplay');
                 if (displayEl) displayEl.textContent = 'RM 0.00';
             }).catch(err => {
                 showToast(err.message, "error");
             });
+        }
+
+        function lockSalesFormIfAbsent() {
+            const now = new Date();
+            const submitBtn = document.querySelector('#dailySalesForm button[type="submit"]');
+            if (!submitBtn) return;
+
+            const todayLog = attendanceLogs.find(log => {
+                const parsedDate = parseLogDate(log.date);
+                return (log.userEmail || '').toLowerCase() === currentUserEmail &&
+                    parsedDate && 
+                    parsedDate.getFullYear() === now.getFullYear() && 
+                    parsedDate.getMonth() === now.getMonth() && 
+                    parsedDate.getDate() === now.getDate();
+            });
+
+            if (todayLog) {
+                const status = (todayLog.punctualityStatus || todayLog.status || '').toLowerCase();
+                if (status === 'absent' || todayLog.statusColor === 'red') {
+                    submitBtn.disabled = true;
+                    submitBtn.className = "px-6 py-3 rounded-xl bg-slate-800 text-slate-500 font-bold text-xs cursor-not-allowed border border-slate-700";
+                    submitBtn.innerText = "Submission Disabled (Marked Absent)";
+                    return;
+                }
+            }
+
+            // Re-enable if not absent
+            submitBtn.disabled = false;
+            submitBtn.className = "px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-950/50 active:scale-95 flex items-center gap-2";
+            submitBtn.innerText = "Submit Daily Report";
         }
 
         function renderSalesTable() {
