@@ -17,8 +17,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Hemzal Staff">
     <link id="manifest-link" rel="manifest">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23FFD500'/><path d='M50 20C35 20 28 35 28 50C28 65 40 75 55 75C68 75 75 62 75 50' stroke='%23D1232A' stroke-width='7' fill='none'/></svg>">
     
+    <!-- App Icons (Replace with your actual image path) -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/hemzal-logo.png">
+    <link rel="apple-touch-icon" href="/hemzal-logo.png">
+        
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -589,9 +592,15 @@
                 description: "Hemzal Crispy Chicken Staff Portal",
                 icons: [
                     {
-                        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23FFD500'/><path d='M50 20C35 20 28 35 28 50C28 65 40 75 55 75C68 75 75 62 75 50' stroke='%23D1232A' stroke-width='7' fill='none'/></svg>",
-                        sizes: "192x192 512x512",
-                        type: "image/svg+xml",
+                        src: "/hemzal-logo.png",
+                        sizes: "192x192",
+                        type: "image/png",
+                        purpose: "any maskable"
+                    },
+                    {
+                        src: "/hemzal-logo.png",
+                        sizes: "512x512",
+                        type: "image/png",
                         purpose: "any maskable"
                     }
                 ]
