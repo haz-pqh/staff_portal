@@ -1847,7 +1847,7 @@
         
             // Prepare Record
             const leaveRequest = {
-                empName: user.displayName || user.email.split('@')[0],
+                empName: user.email.split('@')[0],
                 empId: user.uid.substring(0, 8).toUpperCase(),
                 userEmail: currentUserEmail,
                 leaveType,
