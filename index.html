@@ -796,7 +796,6 @@
             }
         });
 
-        // Fetch latest leave status from Firebase
         function listenUserLeaveRequests(empId) {
             db.ref('leave_requests')
               .orderByChild('empId')
@@ -815,6 +814,11 @@
                   const requests = Object.values(snapshot.val());
                   const latest = requests[requests.length - 1]; // get latest entry
         
+                  // Fallbacks for date field names across different schema versions
+                  const displayDate = latest.leaveDate || latest.dateRequested || latest.requestedDate || latest.date || (latest.createdAt ? latest.createdAt.split('T')[0] : 'N/A');
+                  const displayType = latest.leaveType || latest.type || 'Leave Request';
+                  const displayReason = latest.reason || 'N/A';
+        
                   let badgeStyle = "bg-amber-500/10 text-amber-400 border-amber-500/20";
                   let dotColor = "bg-amber-400";
                   
@@ -832,15 +836,15 @@
                   container.innerHTML = `
                       <div class="flex justify-between items-center text-slate-400">
                           <span>Type:</span>
-                          <span class="font-semibold text-slate-200">${latest.leaveType}</span>
+                          <span class="font-semibold text-slate-200">${displayType}</span>
                       </div>
                       <div class="flex justify-between items-center text-slate-400">
                           <span>Date Requested:</span>
-                          <span class="font-mono text-indigo-300 font-medium">${latest.leaveDate}</span>
+                          <span class="font-mono text-indigo-300 font-medium">${displayDate}</span>
                       </div>
                       <div class="flex justify-between items-center text-slate-400">
                           <span>Reason:</span>
-                          <span class="italic text-slate-300 max-w-[170px] truncate">${latest.reason}</span>
+                          <span class="italic text-slate-300 max-w-[170px] truncate">${displayReason}</span>
                       </div>
                   `;
               });
