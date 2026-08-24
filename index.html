@@ -937,43 +937,63 @@
                 showToast("No active Google session found.", "error");
                 return;
             }
-
+        
             const empName = user.displayName || user.email.split('@')[0];
             const empId = user.uid.substring(0, 8).toUpperCase();
             const now = new Date();
+            const todayStr = now.toLocaleDateString();
             
             // Calculate current time in total minutes from midnight
             const currentMinutes = (now.getHours() * 60) + now.getMinutes();
-
+        
             // Time boundaries (in minutes)
             const time800AM  = 8 * 60;        // 480 mins (08:00)
             const time930AM  = 9 * 60 + 30;   // 570 mins (09:30)
-            const time1100AM = 19 * 60;       // 660 mins (11:00)
-            const time800PM  = 16 * 60;       // 1200 mins (20:00)
+            const time1100AM = 11 * 60;       // 660 mins (11:00)
+            const time800PM  = 20 * 60;       // 1200 mins (20:00)
             const time900PM  = 21 * 60;       // 1260 mins (21:00)
-
+        
             showToast("Capturing location...", "info");
             const location = await getCurrentLocation();
-
+        
             // --- 100m GEOFENCE VALIDATION CHECK ---
             if (!location || !location.lat || !location.lng) {
                 showToast("Unable to acquire your location. Please turn on GPS.", "error");
                 return;
             }
-
+        
             const distance = getDistanceInMeters(location.lat, location.lng, STORE_LAT, STORE_LNG);
-
+        
             if (distance > MAX_ALLOWED_RADIUS_METERS) {
                 showToast(`Access Denied! You are ${distance}m away. Must be within 100m of the main location.`, "error");
                 return;
             }
             // --------------------------------------
-
+        
             if (!activeSession) {
+                // --- ONCE-PER-DAY CHECK ---
+                showToast("Checking daily shift status...", "info");
+                const existingLogsSnap = await db.ref('attendance_logs')
+                    .orderByChild('empId')
+                    .equalTo(empId)
+                    .once('value');
+        
+                let alreadyClockedToday = false;
+                if (existingLogsSnap.exists()) {
+                    const logs = existingLogsSnap.val();
+                    alreadyClockedToday = Object.values(logs).some(log => log.date === todayStr);
+                }
+        
+                if (alreadyClockedToday) {
+                    showToast("Access Denied: You have already completed your shift for today.", "error");
+                    return;
+                }
+                // --------------------------
+        
                 // --- CLOCK IN WINDOW RULES ---
                 let punctualityStatus = "";
                 let statusColor = "";
-
+        
                 if (currentMinutes >= time800AM && currentMinutes <= time930AM) {
                     punctualityStatus = "ON TIME";
                     statusColor = "green";
@@ -984,7 +1004,7 @@
                     showToast("Clock-in is only allowed between 8:00 AM and 11:00 AM.", "error");
                     return;
                 }
-
+        
                 db.ref('active_session').set({
                     empName,
                     empId,
@@ -997,20 +1017,20 @@
                     showToast(`Clocked in (${punctualityStatus}): ${empName}`);
                     updateClock();
                 });
-
+        
             } else {
                 // --- CLOCK OUT WINDOW RULES ---
                 if (currentMinutes < time800PM || currentMinutes > time900PM) {
                     showToast("Clock-out is only allowed between 8:00 PM and 9:00 PM.", "error");
                     return;
                 }
-
+        
                 const clockInDate = new Date(activeSession.clockInTime);
                 const diffMs = now - clockInDate;
                 const totalMinutes = Math.max(1, Math.round(diffMs / 60000));
                 const hrs = Math.floor(totalMinutes / 60);
                 const mins = totalMinutes % 60;
-
+        
                 const newLogRef = db.ref('attendance_logs').push();
                 newLogRef.set({
                     id: newLogRef.key,
