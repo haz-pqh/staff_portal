@@ -814,8 +814,16 @@
                   const requests = Object.values(snapshot.val());
                   const latest = requests[requests.length - 1]; // get latest entry
         
-                  // Fallbacks for date field names across different schema versions
-                  const displayDate = latest.leaveDate || latest.dateRequested || latest.requestedDate || latest.date || (latest.createdAt ? latest.createdAt.split('T')[0] : 'N/A');
+                  // Parse start and end date schema
+                  let displayDate = 'N/A';
+                  if (latest.startDate && latest.endDate) {
+                      displayDate = latest.startDate === latest.endDate 
+                          ? latest.startDate 
+                          : `${latest.startDate} ~ ${latest.endDate}`;
+                  } else {
+                      displayDate = latest.startDate || latest.endDate || latest.leaveDate || 'N/A';
+                  }
+        
                   const displayType = latest.leaveType || latest.type || 'Leave Request';
                   const displayReason = latest.reason || 'N/A';
         
@@ -850,7 +858,7 @@
               });
         }
         
-        // Quick modal prompt for creating a new leave entry
+        // Create new leave aligned with startDate and endDate fields
         async function requestLeavePrompt() {
             const user = auth.currentUser;
             if (!user) {
@@ -858,13 +866,16 @@
                 return;
             }
         
-            const leaveType = prompt("Enter Leave Type (e.g. Annual Leave, Medical Leave):", "Annual Leave");
+            const leaveType = prompt("Enter Leave Type:", "Annual Leave");
             if (!leaveType) return;
         
-            const leaveDate = prompt("Enter Target Date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
-            if (!leaveDate) return;
+            const startDate = prompt("Start Date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+            if (!startDate) return;
         
-            const reason = prompt("Enter Reason for Leave:", "Personal matters");
+            const endDate = prompt("End Date (YYYY-MM-DD):", startDate);
+            if (!endDate) return;
+        
+            const reason = prompt("Enter Reason:", "Medical / Personal");
             if (!reason) return;
         
             const empName = user.displayName || user.email.split('@')[0];
@@ -877,7 +888,8 @@
                 empName,
                 userEmail: user.email,
                 leaveType,
-                leaveDate,
+                startDate,
+                endDate,
                 reason,
                 status: 'PENDING',
                 createdAt: new Date().toISOString()
