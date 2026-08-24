@@ -649,6 +649,13 @@
             }
         }
 
+        function getISODateString(dateObj = new Date()) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
         let deferredPWAInstallPrompt = null;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -1178,7 +1185,7 @@
                     empName: activeSession.empName,
                     empId: activeSession.empId,
                     userEmail: activeSession.userEmail || currentUserEmail,
-                    date: clockInDate.toLocaleDateString(),
+                    date: getISODateString(clockInDate), // Stores as "2026-08-24"
                     clockIn: clockInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     clockOut: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     durationMs: diffMs,
