@@ -453,7 +453,14 @@
                         <i class="fa-solid fa-file-invoice-dollar"></i>
                     </div>
                     <h3 class="text-lg font-bold text-white mb-1 text-center">My Payslips</h3>
-                    <p class="text-xs text-slate-400 mb-6 text-center">Payslips uploaded by admin appear here. View or download once your slip for the period is ready.</p>
+                    <p class="text-xs text-slate-400 mb-4 text-center">Payslips uploaded by admin appear here. View or download once your slip for the period is ready.</p>
+
+                    <div class="flex items-center justify-between gap-2 mb-4">
+                        <label for="payslipYearFilter" class="text-xs font-medium text-slate-400 shrink-0">Filter by Year</label>
+                        <select id="payslipYearFilter" onchange="renderPayslipList()" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                            <option value="">All Years</option>
+                        </select>
+                    </div>
 
                     <div id="payslipListContainer" class="space-y-3">
                         <p class="text-xs text-slate-500 text-center py-6">Loading your payslips...</p>
@@ -1970,20 +1977,52 @@
                   myPayslips = Object.keys(data)
                       .map(key => ({ key, ...data[key] }))
                       .sort((a, b) => (b.period || '').localeCompare(a.period || ''));
+                  populatePayslipYearFilter();
                   renderPayslipList();
               });
+        }
+
+        // Builds the "Filter by Year" dropdown from the years actually present
+        // in the staff member's payslip records, keeping their current selection if possible.
+        function populatePayslipYearFilter() {
+            const select = document.getElementById('payslipYearFilter');
+            if (!select) return;
+
+            const years = Array.from(new Set(
+                myPayslips
+                    .map(r => (r.period || '').split('-')[0])
+                    .filter(Boolean)
+            )).sort((a, b) => b.localeCompare(a));
+
+            const current = select.value;
+            select.innerHTML = '<option value="">All Years</option>' +
+                years.map(y => `<option value="${escapeHtml(y)}">${escapeHtml(y)}</option>`).join('');
+
+            if (current && years.includes(current)) {
+                select.value = current;
+            }
         }
 
         function renderPayslipList() {
             const container = document.getElementById('payslipListContainer');
             if (!container) return;
 
+            const selectedYear = document.getElementById('payslipYearFilter')?.value || '';
+            const filtered = selectedYear
+                ? myPayslips.filter(r => (r.period || '').startsWith(selectedYear))
+                : myPayslips;
+
             if (myPayslips.length === 0) {
                 container.innerHTML = '<p class="text-xs text-slate-500 text-center py-6">No payslips uploaded yet. Check back once admin publishes your payslip.</p>';
                 return;
             }
 
-            container.innerHTML = myPayslips.map(record => {
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No payslips found for ${escapeHtml(selectedYear)}.</p>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(record => {
                 const amount = Number(record.amount);
                 const amountText = Number.isFinite(amount) ? `RM ${amount.toFixed(2)}` : '--';
                 return `
