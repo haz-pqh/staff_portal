@@ -712,8 +712,13 @@
             const startTime = new Date(`${dateStr}T${clockInStr}:00`);
         
             function updateDisplay() {
-                const diffMs = new Date() - startTime;
-                if (diffMs < 0) return;
+                // Clamp instead of bailing out: if this ever comes out negative
+                // (e.g. clock-in time set slightly ahead of the device's clock),
+                // returning early would freeze the timer forever, since every
+                // future tick would keep hitting the same early return. Clamping
+                // to 0 keeps it self-correcting - it just starts counting from
+                // 00:00:00 the moment the real elapsed time turns positive.
+                const diffMs = Math.max(0, new Date() - startTime);
         
                 const hrs = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
                 const mins = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
