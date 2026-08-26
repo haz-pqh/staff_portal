@@ -1111,7 +1111,7 @@
         
         // Fetch current latitude and longitude using Browser Geolocation API
         function getCurrentLocation() {
-            return new Promise((resolve) => {
+            return new Promise(async (resolve) => {
                 if (!window.isSecureContext && window.location.hostname !== "localhost") {
                     showToast("Location denied: Website must be served over HTTPS.", "error");
                     resolve({ status: "FAILED", lat: null, lng: null });
@@ -1123,20 +1123,55 @@
                     resolve({ status: "FAILED", lat: null, lng: null });
                     return;
                 }
-        
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => resolve({ status: "SUCCESS", lat: pos.coords.latitude, lng: pos.coords.longitude }),
-                    (err) => {
-                        let msg = "GPS error.";
-                        if (err.code === err.PERMISSION_DENIED) msg = "Location permission denied on device.";
-                        if (err.code === err.POSITION_UNAVAILABLE) msg = "GPS signal unavailable.";
-                        if (err.code === err.TIMEOUT) msg = "Location request timed out.";
-                        
-                        showToast(msg, "error");
-                        resolve({ status: "FAILED", lat: null, lng: null });
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                );
+
+                // Pre-check permission state so we can give an actionable message
+                // instead of only surfacing the raw browser error.
+                if (navigator.permissions && navigator.permissions.query) {
+                    try {
+                        const perm = await navigator.permissions.query({ name: "geolocation" });
+                        if (perm.state === "denied") {
+                            showToast("Location is blocked for this app. Enable it in your browser/site settings (⋮ menu > Site settings > Location > Allow), then try again.", "error");
+                            resolve({ status: "FAILED", lat: null, lng: null });
+                            return;
+                        }
+                    } catch (e) {
+                        // Permissions API not supported for 'geolocation' on this browser — ignore and continue.
+                    }
+                }
+
+                const attempt = (options) => new Promise((res) => {
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => res({ status: "SUCCESS", lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                        (err) => res({ status: "FAILED", error: err }),
+                        options
+                    );
+                });
+
+                // First try: high accuracy GPS fix.
+                let result = await attempt({ enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+
+                // If it timed out or the position was momentarily unavailable, retry once
+                // with relaxed accuracy and a longer timeout — this often succeeds indoors
+                // or on devices where GPS takes longer to get a first fix.
+                if (result.status === "FAILED" && result.error &&
+                    (result.error.code === result.error.TIMEOUT || result.error.code === result.error.POSITION_UNAVAILABLE)) {
+                    result = await attempt({ enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
+                }
+
+                if (result.status === "SUCCESS") {
+                    resolve(result);
+                    return;
+                }
+
+                const err = result.error;
+                let msg = "GPS error.";
+                if (err) {
+                    if (err.code === err.PERMISSION_DENIED) msg = "Location permission denied on device. Enable location access for this app/browser in your phone's Settings > Apps > Permissions.";
+                    if (err.code === err.POSITION_UNAVAILABLE) msg = "Unable to acquire your location. Please turn on GPS and make sure you have a clear view of the sky, then try again.";
+                    if (err.code === err.TIMEOUT) msg = "Location request timed out. Check your GPS/network signal and try again.";
+                }
+                showToast(msg, "error");
+                resolve({ status: "FAILED", lat: null, lng: null });
             });
         }
 
