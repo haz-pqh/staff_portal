@@ -649,11 +649,114 @@
             }
         }
 
+        let activeLogKey = null;
+        let activeLogData = null;
+        let timerInterval = null;
+        
+        // Helper function for standard ISO YYYY-MM-DD date format
         function getISODateString(dateObj = new Date()) {
             const year = dateObj.getFullYear();
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
             const day = String(dateObj.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
+        }
+        
+        // 1. Real-time Firebase Listener (Detects if Admin clocked in staff for today)
+        function listenAttendanceToday(userEmail) {
+            const todayISO = getISODateString(new Date());
+        
+            db.ref('attendance_logs')
+              .orderByChild('date')
+              .equalTo(todayISO)
+              .on('value', (snapshot) => {
+                  if (timerInterval) clearInterval(timerInterval);
+                  activeLogKey = null;
+                  activeLogData = null;
+        
+                  if (!snapshot.exists()) {
+                      setClockUIState('READY_TO_CLOCK_IN');
+                      return;
+                  }
+        
+                  // Search snapshot for matching user email
+                  const logs = snapshot.val();
+                  for (const key in logs) {
+                      if (logs[key].userEmail === userEmail) {
+                          activeLogKey = key;
+                          activeLogData = logs[key];
+                          break;
+                      }
+                  }
+        
+                  if (!activeLogData) {
+                      setClockUIState('READY_TO_CLOCK_IN');
+                      return;
+                  }
+        
+                  // Case 1: Active shift (Clock-in exists, Clock-out empty)
+                  if (activeLogData.clockIn && !activeLogData.clockOut) {
+                      setClockUIState('CLOCKED_IN', activeLogData);
+                      startRunningTimer(activeLogData.date, activeLogData.clockIn);
+                  } 
+                  // Case 2: Shift completed for today
+                  else if (activeLogData.clockIn && activeLogData.clockOut) {
+                      setClockUIState('SHIFT_COMPLETED', activeLogData);
+                  }
+              });
+        }
+        
+        // 2. Running Ticker Timer
+        function startRunningTimer(dateStr, clockInStr) {
+            if (timerInterval) clearInterval(timerInterval);
+        
+            const startTime = new Date(`${dateStr}T${clockInStr}:00`);
+        
+            function updateDisplay() {
+                const diffMs = new Date() - startTime;
+                if (diffMs < 0) return;
+        
+                const hrs = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
+                const mins = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
+                const secs = String(Math.floor((diffMs % 60000) / 1000)).padStart(2, '0');
+        
+                const timerEl = document.getElementById('shiftTimerDisplay');
+                if (timerEl) timerEl.textContent = `${hrs}:${mins}:${secs}`;
+            }
+        
+            updateDisplay();
+            timerInterval = setInterval(updateDisplay, 1000);
+        }
+        
+        // 3. UI Toggle Helper
+        function setClockUIState(state, log = null) {
+            const clockBtn = document.getElementById('clockBtn');
+            const statusText = document.getElementById('shiftStatusText');
+            const timerEl = document.getElementById('shiftTimerDisplay');
+        
+            if (!clockBtn) return;
+        
+            if (state === 'CLOCKED_IN') {
+                clockBtn.disabled = false;
+                clockBtn.innerHTML = `<i class="fa-solid fa-square"></i><span>Clock Out</span>`;
+                clockBtn.className = "w-full py-3 px-4 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center justify-center gap-2";
+                if (statusText) {
+                    statusText.textContent = log.createdByAdmin 
+                        ? "Clocked in by Admin • ON DUTY" 
+                        : "ON DUTY • Shift active";
+                }
+            } else if (state === 'SHIFT_COMPLETED') {
+                clockBtn.disabled = true;
+                clockBtn.innerHTML = `<i class="fa-solid fa-check"></i><span>Shift Completed</span>`;
+                clockBtn.className = "w-full py-3 px-4 rounded-xl font-bold text-white bg-slate-700 cursor-not-allowed opacity-70 flex items-center justify-center gap-2";
+                if (statusText) statusText.textContent = `Shift ended at ${log.clockOut}`;
+                if (timerEl) timerEl.textContent = log.durationText || "00:00:00";
+            } else {
+                clockBtn.disabled = false;
+                clockBtn.innerHTML = `<i class="fa-solid fa-play"></i><span>Clock In</span>`;
+                clockBtn.className = "w-full py-3 px-4 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition flex items-center justify-center gap-2";
+                if (statusText) statusText.textContent = "OFF DUTY • Ready to clock in";
+                if (timerEl) timerEl.textContent = "00:00:00";
+            }
         }
         
         let deferredPWAInstallPrompt = null;
@@ -797,6 +900,7 @@
                 document.getElementById('salesDate').value = new Date().toISOString().slice(0, 10);
 
                 initDatabaseListeners();
+                listenAttendanceToday(user.email);
             } else {
                 portalView.classList.add('hidden');
                 loginView.classList.remove('hidden');
@@ -1093,9 +1197,9 @@
             }
         
             const empName = user.displayName || user.email.split('@')[0];
-            const empId = user.uid.substring(0, 8).toUpperCase();
             const now = new Date();
-            const todayStr = now.toLocaleDateString();
+            const todayISO = getISODateString(now);
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
             
             // Calculate current time in total minutes from midnight
             const currentMinutes = (now.getHours() * 60) + now.getMinutes();
@@ -1103,9 +1207,9 @@
             // Time boundaries (in minutes)
             const time800AM  = 8 * 60;        // 480 mins (08:00)
             const time930AM  = 9 * 60 + 30;   // 570 mins (09:30)
-            const time1100AM = 2 * 60;       // 660 mins (11:00)
-            const time800PM  = 2 * 60;       // 1200 mins (20:00)
-            const time900PM  = 3 * 60;       // 1260 mins (21:00)
+            const time1100AM = 11 * 60;       // 660 mins (11:00)
+            const time800PM  = 20 * 60;       // 1200 mins (20:00)
+            const time900PM  = 21 * 60;       // 1260 mins (21:00)
         
             showToast("Capturing location...", "info");
             const location = await getCurrentLocation();
@@ -1119,93 +1223,80 @@
             const distance = getDistanceInMeters(location.lat, location.lng, STORE_LAT, STORE_LNG);
         
             if (distance > MAX_ALLOWED_RADIUS_METERS) {
-                showToast(`Access Denied! You are ${distance}m away. Must be within 100m of the main location.`, "error");
+                showToast(`Access Denied! You are ${distance}m away. Must be within 100m of main location.`, "error");
                 return;
             }
             // --------------------------------------
         
-            if (!activeSession) {
-                // --- ONCE-PER-DAY CHECK ---
-                showToast("Checking daily shift status...", "info");
-                const existingLogsSnap = await db.ref('attendance_logs')
-                    .orderByChild('empId')
-                    .equalTo(empId)
-                    .once('value');
-        
-                let alreadyClockedToday = false;
-                if (existingLogsSnap.exists()) {
-                    const logs = existingLogsSnap.val();
-                    alreadyClockedToday = Object.values(logs).some(log => log.date === todayStr);
-                }
-        
-                if (alreadyClockedToday) {
-                    showToast("Access Denied: You have already completed your shift for today.", "error");
-                    return;
-                }
-                // --------------------------
-        
-                // --- CLOCK IN WINDOW RULES ---
-                let punctualityStatus = "";
-                let statusColor = "";
-        
-                if (currentMinutes >= time800AM && currentMinutes <= time930AM) {
-                    punctualityStatus = "ON TIME";
-                    statusColor = "green";
-                } else if (currentMinutes > time930AM && currentMinutes <= time1100AM) {
-                    punctualityStatus = "LATE";
-                    statusColor = "red";
-                } else {
-                    showToast("Clock-in is only allowed between 8:00 AM and 11:00 AM.", "error");
-                    return;
-                }
-        
-                db.ref('active_session').set({
-                    empName,
-                    empId,
-                    userEmail: currentUserEmail,
-                    clockInTime: now.toISOString(),
-                    punctualityStatus,
-                    statusColor,
-                    clockInLocation: location
-                }).then(() => {
-                    showToast(`Clocked in (${punctualityStatus}): ${empName}`);
-                    updateClock();
-                });
-        
-            } else {
-                // --- CLOCK OUT WINDOW RULES ---
+            // --- CASE 1: CLOCK OUT (Active log exists without clockOut) ---
+            if (activeLogKey && activeLogData && !activeLogData.clockOut) {
                 if (currentMinutes < time800PM || currentMinutes > time900PM) {
                     showToast("Clock-out is only allowed between 8:00 PM and 9:00 PM.", "error");
                     return;
                 }
         
-                const clockInDate = new Date(activeSession.clockInTime);
-                const diffMs = now - clockInDate;
+                const startTime = new Date(`${activeLogData.date}T${activeLogData.clockIn}:00`);
+                const diffMs = now - startTime;
                 const totalMinutes = Math.max(1, Math.round(diffMs / 60000));
                 const hrs = Math.floor(totalMinutes / 60);
                 const mins = totalMinutes % 60;
+                const durationText = `${hrs}h ${mins}m`;
         
-                const newLogRef = db.ref('attendance_logs').push();
-                newLogRef.set({
-                    id: newLogRef.key,
-                    empName: activeSession.empName,
-                    empId: activeSession.empId,
-                    userEmail: activeSession.userEmail || currentUserEmail,
-                    date: getISODateString(clockInDate), // Stores as "2026-08-24"
-                    clockIn: clockInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    clockOut: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    durationMs: diffMs,
-                    durationText: `${hrs}h ${mins}m`,
-                    punctualityStatus: activeSession.punctualityStatus || 'ON TIME',
-                    statusColor: activeSession.statusColor || 'green',
-                    clockInLocation: activeSession.clockInLocation || null,
+                await db.ref(`attendance_logs/${activeLogKey}`).update({
+                    clockOut: timeStr,
+                    durationText: durationText,
+                    lastModifiedAt: Date.now(),
                     clockOutLocation: location
-                }).then(() => {
-                    db.ref('active_session').remove();
-                    showToast(`Clocked out. Duration: ${hrs}h ${mins}m`);
-                    updateClock();
                 });
+        
+                showToast(`Clocked out. Duration: ${durationText}`);
+                return;
             }
+        
+            // --- CASE 2: SHIFT ALREADY COMPLETED TODAY ---
+            if (activeLogData && activeLogData.clockOut) {
+                showToast("Access Denied: You have already completed your shift for today.", "error");
+                return;
+            }
+        
+            // --- CASE 3: CLOCK IN ---
+            let punctualityStatus = "";
+            let statusColor = "";
+            let remarks = "";
+        
+            if (currentMinutes >= time800AM && currentMinutes <= time930AM) {
+                punctualityStatus = "ON TIME";
+                statusColor = "green";
+            } else if (currentMinutes > time930AM && currentMinutes <= time1100AM) {
+                punctualityStatus = "LATE";
+                statusColor = "amber";
+                remarks = "Late";
+            } else {
+                showToast("Clock-in is only allowed between 8:00 AM and 11:00 AM.", "error");
+                return;
+            }
+        
+            const newLogRef = db.ref('attendance_logs').push();
+            await newLogRef.set({
+                autoGenerated: false,
+                clockIn: timeStr,
+                clockOut: "",
+                createdByAdmin: false,
+                date: todayISO,
+                durationText: "In Progress",
+                editedByAdmin: false,
+                empName: empName,
+                hasAttachment: false,
+                lastModifiedAt: Date.now(),
+                punctualityStatus: punctualityStatus,
+                remarks: remarks,
+                statusColor: statusColor,
+                timestamp: Date.now(),
+                userEmail: user.email,
+                clockInLocation: location
+            });
+        
+            showToast(`Clocked in (${punctualityStatus}): ${empName}`);
         }
 
         let currentViewDate = new Date();
