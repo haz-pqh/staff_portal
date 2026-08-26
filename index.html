@@ -3,256 +3,817 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staff Portal | Hemzal</title>
+    <title>Staff Portal | Attendance & Management</title>
 
+    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#6366f1">
+    <!-- Progressive Web App (PWA) & Mobile Meta Tags -->
+    <meta name="theme-color" content="#FFD500">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hemzal Staff">
     <link id="manifest-link" rel="manifest">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%236366f1'/><path d='M30 50 L45 65 L70 35' stroke='white' stroke-width='8' fill='none'/></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23FFEAEA'/><path d='M50 20C35 20 28 35 28 50C28 65 40 75 55 75C68 75 75 62 75 50' stroke='%23d1232a' stroke-width='7'/></svg>">
     
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: { brand: { 50: '#f0f5ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' } }
+                    colors: {
+                        brand: { 50: '#f0f5ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+                    }
                 }
             }
         }
     </script>
 
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Firebase Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <!-- jsPDF for Payslip PDF Downloads -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
-        .btn-pwa-install { display: none; align-items: center; justify-content: center; gap: 8px; background-color: #1e1e1e; color: #FFD500; border: 2px solid #FFD500; padding: 8px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; cursor: pointer; margin-top: 10px; transition: transform 0.2s ease; }
+        .btn-pwa-install {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background-color: #1e1e1e;
+            color: #FFD500;
+            border: 2px solid #FFD500;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-top: 10px;
+            transition: transform 0.2s ease;
+        }
         .btn-pwa-install:active { transform: scale(0.95); }
-        .tab-content.hidden { display: none; }
     </style>
 </head>
-<body class="h-full text-slate-100 font-sans antialiased bg-slate-950">
+<body class="h-full text-slate-100 font-sans antialiased bg-slate-950 selection:bg-indigo-500 selection:text-white">
 
-    <div id="toastContainer" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- LOGIN VIEW -->
-    <div id="loginView" class="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/30 via-slate-950 to-slate-950">
-        <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl shadow-2xl text-center">
-            <div class="inline-flex items-center justify-center w-14 h-14 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-2xl mb-4 text-xl">
-                <i class="fa-solid fa-shield-halved"></i>
+    <!-- ==================== LOGIN VIEW ==================== -->
+    <div id="loginView" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/30 via-slate-950 to-slate-950">
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl shadow-2xl shadow-indigo-950/50 relative z-10">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-14 h-14 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-2xl mb-4 text-xl">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white tracking-tight">Welcome Back</h1>
+                <p class="text-xs text-slate-400 mt-1">Sign in with your authorized Google account</p>
+                <button id="pwa-install-btn" class="btn-pwa-install" onclick="triggerAppInstall()">
+                    <i class="fa-solid fa-download"></i> Install App to Phone
+                </button>
             </div>
-            <h1 class="text-2xl font-bold text-white">Hemzal Staff Portal</h1>
-            <p class="text-xs text-slate-400 mt-1 mb-8">Authorized Access Only</p>
-            <button onclick="handleGoogleLogin()" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl shadow-lg flex items-center justify-center gap-3 text-sm transition-all">
-                <i class="fa-brands fa-google"></i> Continue with Google
-            </button>
-            <button id="pwa-install-btn" class="btn-pwa-install mx-auto" onclick="triggerAppInstall()">
-                <i class="fa-solid fa-download"></i> Install App
+
+            <button type="button" onclick="handleGoogleLogin()" 
+                class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-3 text-sm">
+                <svg class="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/>
+                    <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+                    <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 10.8 0 12s.7 2.3 1.9 4.7l3.7-2.9z"/>
+                    <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"/>
+                </svg>
+                <span>Continue with Google</span>
             </button>
         </div>
     </div>
 
-    <!-- MAIN PORTAL -->
+    <!-- ==================== MAIN DASHBOARD PORTAL VIEW ==================== -->
     <div id="portalView" class="hidden min-h-screen flex flex-col bg-slate-950 pb-24">
+        <!-- Top Header -->
         <header class="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-30">
-            <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-xl overflow-hidden bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                        <i id="userAvatarFallback" class="fa-solid fa-bolt text-sm"></i>
                         <img id="userAvatarImg" class="w-full h-full object-cover hidden" alt="Avatar">
-                        <i id="userAvatarFallback" class="fa-solid fa-user text-sm"></i>
                     </div>
                     <div>
-                        <h2 class="text-sm font-bold text-white" id="userDisplayName">Staff</h2>
-                        <p id="userEmailDisplay" class="text-[10px] text-slate-500">---</p>
+                        <h2 class="text-sm font-bold text-white tracking-wide" id="userDisplayName">Staff Member</h2>
+                        <p id="userEmailDisplay" class="text-xs text-slate-400">user@company.com</p>
                     </div>
                 </div>
-                <div class="text-right">
-                    <span id="liveTime" class="font-mono text-sm font-bold text-indigo-400 block">00:00:00</span>
-                    <span id="liveDate" class="text-[10px] text-slate-500 uppercase">---</span>
+
+                <div class="flex items-center gap-6">
+                    <div class="flex flex-col items-end">
+                        <span id="liveTime" class="font-mono text-sm font-semibold text-indigo-400">00:00:00 AM</span>
+                        <span id="liveDate" class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Loading...</span>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
-            <!-- TAB: HOME -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+            <!-- TAB 1: HOME (Dashboard & Clock Terminal) -->
             <section id="tab-home" class="tab-content space-y-6">
+                <!-- Clock Terminal -->
                 <div class="max-w-xl mx-auto bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl">
-                    <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-                        <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400">Shift Terminal</h3>
-                        <span id="statusBadge" class="px-2.5 py-1 rounded-full text-[10px] font-black bg-slate-800 text-slate-500 border border-slate-700">OFFLINE</span>
+                    <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
+                        <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-terminal text-indigo-400 text-sm"></i> Clocking Terminal
+                        </h3>
+                        <span id="statusBadge" class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
+                            Offline
+                        </span>
                     </div>
 
-                    <div id="statusBanner" class="p-8 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6">
-                        <span class="text-[10px] uppercase tracking-widest text-slate-500 font-bold block mb-2">Current Session</span>
-                        <div id="sessionTimer" class="font-mono text-4xl font-black text-slate-600 my-1">00:00:00</div>
-                        <p id="statusText" class="text-xs text-slate-500 mt-2">Ready to start shift</p>
+                    <!-- Active User Info Badge (Replaces Input Fields) -->
+                    <div class="mb-6 p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-medium">Logged in as:</span>
+                        <span id="clockTerminalUser" class="text-indigo-400 font-semibold">--</span>
                     </div>
 
-                    <button id="clockBtn" onclick="toggleClock()" class="w-full py-4 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all flex items-center justify-center gap-2 shadow-lg">
-                        <i class="fa-solid fa-play"></i> <span id="btnText">Clock In</span>
+                    <div id="statusBanner" class="p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6 transition-all duration-300">
+                        <span class="text-[10px] uppercase tracking-widest text-slate-500 font-bold block mb-1">Shift Duration</span>
+                        <div id="sessionTimer" class="font-mono text-3xl font-bold text-slate-500 my-1">00:00:00</div>
+                        <p id="statusText" class="text-xs text-slate-400">Ready to clock in</p>
+                    </div>
+
+                    <button id="clockBtn" onclick="toggleClock()" 
+                        class="w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play text-xs"></i>
+                        <span id="btnText">Clock In</span>
                     </button>
                 </div>
 
-                <!-- Leave Summary Card -->
-                <div class="max-w-xl mx-auto bg-slate-900 border border-slate-800 p-5 rounded-3xl">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xs font-bold text-white uppercase"><i class="fa-solid fa-calendar-day mr-2 text-indigo-400"></i>Leave Status</h2>
-                        <span id="leaveStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-500">None</span>
+                <!-- Leave Request Status Card -->
+                <div class="mt-4 bg-slate-900 border border-slate-800/80 p-5 rounded-3xl shadow-2xl space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-day text-indigo-400"></i>
+                            <h2 class="text-xs font-bold text-white uppercase tracking-wider">Leave Request</h2>
+                        </div>
+                        <!-- Dynamic Status Badge -->
+                        <span id="leaveStatusBadge" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                            <span>Pending</span>
+                        </span>
                     </div>
-                    <div id="leaveInfoContainer" class="bg-slate-950/50 rounded-2xl p-4 text-xs space-y-2 mb-4 border border-slate-800">
-                        <p class="text-slate-500 text-center italic">No active requests</p>
+                
+                    <!-- Details Box -->
+                    <div id="leaveInfoContainer" class="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 text-xs space-y-2">
+                        <div class="flex justify-between items-center text-slate-400">
+                            <span>Leave Type:</span>
+                            <span id="leaveTypeVal" class="font-semibold text-slate-200">Annual Leave</span>
+                        </div>
+                        <div class="flex justify-between items-center text-slate-400">
+                            <span>Date Requested:</span>
+                            <span id="leaveDateVal" class="font-mono text-indigo-300 font-medium">2026-08-25</span>
+                        </div>
+                        <div class="flex justify-between items-center text-slate-400">
+                            <span>Reason:</span>
+                            <span id="leaveReasonVal" class="italic text-slate-300 max-w-[170px] truncate">Medical Checkup</span>
+                        </div>
                     </div>
-                    <button onclick="openLeaveModal()" class="w-full py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold border border-slate-700 hover:bg-slate-700 transition">Apply New Leave</button>
+                
+                    <!-- Action Button -->
+                    <button onclick="requestLeavePrompt()" 
+                        class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800/80 hover:bg-indigo-600 hover:text-white transition flex items-center justify-center gap-2 border border-slate-700/50">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Apply New Leave</span>
+                    </button>
                 </div>
             </section>
 
-            <!-- TAB: ATTENDANCE -->
-            <section id="tab-attendance" class="tab-content hidden space-y-6">
-                <div class="max-w-xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-sm font-bold">Attendance History</h3>
-                        <button onclick="exportCSV()" class="text-xs text-indigo-400 font-bold"><i class="fa-solid fa-file-csv mr-1"></i> Export CSV</button>
-                    </div>
+            <!-- TAB 2: ATTENDANCE TRACKER (Grid Calendar UI) -->
+            <section id="tab-attendance" class="tab-content space-y-6 hidden">
+                <div class="max-w-xl mx-auto bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl">
                     
-                    <div class="flex items-center justify-between mb-4">
-                        <button onclick="changeMonth(-1)" class="p-2 text-slate-400"><i class="fa-solid fa-chevron-left"></i></button>
-                        <h4 id="calendarMonthYear" class="font-bold text-sm"></h4>
-                        <button onclick="changeMonth(1)" class="p-2 text-slate-400"><i class="fa-solid fa-chevron-right"></i></button>
+                    <!-- Header Actions -->
+                    <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+                        <div>
+                            <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-days text-indigo-400 text-sm"></i> Attendance Calendar
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Select a date to view logged shift details</p>
+                        </div>
+                        <button onclick="exportCSV()" class="px-3 py-1.5 text-xs font-semibold text-slate-300 bg-slate-800/80 hover:bg-slate-700 rounded-xl border border-slate-700 transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv text-indigo-400"></i> Export
+                        </button>
                     </div>
 
+                    <!-- Month Navigation Bar -->
+                    <div class="flex items-center justify-between my-4 px-2">
+                        <button onclick="changeMonth(-1)" class="w-8 h-8 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-slate-300 flex items-center justify-center transition active:scale-95">
+                            <i class="fa-solid fa-chevron-left text-xs"></i>
+                        </button>
+                        
+                        <h4 id="calendarMonthYear" class="text-sm font-bold text-white tracking-wide">August 2026</h4>
+                        
+                        <button onclick="changeMonth(1)" class="w-8 h-8 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-slate-300 flex items-center justify-center transition active:scale-95">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </button>
+                    </div>
+
+                    <!-- Calendar Days Header (sun - sat) -->
                     <div class="grid grid-cols-7 gap-1 text-center mb-2">
-                        <span class="text-[10px] text-slate-600 font-bold uppercase">S</span>
-                        <span class="text-[10px] text-slate-600 font-bold uppercase">M</span>
-                        <span class="text-[10px] text-slate-600 font-bold uppercase">T</span>
-                        <span class="text-[10px] text-slate-600 font-bold uppercase">W</span>
-                        <span class="text-[10px] text-slate-600 font-bold uppercase">T</span>
-                        <span class="text-[10px] text-slate-600 font-bold uppercase">F</span>
-                        <span class="text-[10px] text-slate-600 font-bold uppercase">S</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">sun</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">mon</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">tue</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">wed</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">thu</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">fri</span>
+                        <span class="text-[11px] font-medium text-slate-500 lowercase">sat</span>
                     </div>
-                    <div id="calendarGrid" class="grid grid-cols-7 gap-1.5"></div>
-                </div>
 
-                <div class="max-w-xl mx-auto">
-                    <div id="selectedDateLogs" class="space-y-3"></div>
+                    <!-- Dynamic Date Grid -->
+                    <div id="calendarGrid" class="grid grid-cols-7 gap-1.5 text-center"></div>
+                </div>
+                <!-- Centered Apply Leave Button (Outside & Below Calendar Card) -->
+                <div class="flex justify-center mt-4">
+                    <button onclick="openLeaveModal()" type="button" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-indigo-950/50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 002-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        Apply Leave
+                    </button>
+                </div>
+                <!-- Details Box for Selected Date -->
+                <div class="max-w-xl mx-auto bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-400" id="selectedDateLabel">Selected Date Details</h4>
+                        <button onclick="clearDateFilter()" class="text-[10px] text-slate-400 hover:text-white underline">Show All Records</button>
+                    </div>
+                    <div id="selectedDateLogs" class="space-y-2"></div>
                 </div>
             </section>
 
-            <!-- TAB: SALES -->
-            <section id="tab-sales" class="tab-content hidden space-y-6">
-                <div class="max-w-4xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6">
-                    <h2 class="text-lg font-bold mb-6">Daily Sales Report</h2>
-                    <form id="dailySalesForm" onsubmit="handleSalesSubmit(event)" class="space-y-8">
-                        <!-- Standard inputs as per your UI -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cawangan</label>
-                                <input type="text" id="salesCawangan" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:border-indigo-500 outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tarikh</label>
-                                <input type="date" id="salesDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:border-indigo-500 outline-none">
+            <!-- TAB 3: DAILY SALE UPDATE -->
+            <section id="tab-sales" class="tab-content space-y-6 hidden">
+                <!-- Daily Sales Update Container -->
+                <div class="max-w-4xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-slate-200">
+                    <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
+                        <div>
+                            <h2 class="text-base font-bold text-white uppercase tracking-wider">Daily Sales & Inventory Report</h2>
+                            <p class="text-xs text-slate-400">Complete all financial, platform, expense, and flavor inventory metrics.</p>
+                        </div>
+                        <span class="px-3 py-1 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold rounded-full">Daily Log</span>
+                    </div>
+                
+                    <form id="dailySalesForm" onsubmit="handleSalesSubmit(event)" class="space-y-6">
+                        
+                        <!-- SECTION 1: General Info & Cash -->
+                        <div>
+                            <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3">1. General Information & Cash</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Cawangan (Branch)</label>
+                                    <input type="text" id="salesCawangan" required placeholder="e.g. PERMATA" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Tarikh (Date)</label>
+                                    <input type="date" id="salesDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Jumlah Bag & Catatan Bag</label>
+                                    <input type="text" id="salesJumlahBag" placeholder="e.g. 10 bag (8 bag bawa balik)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Petty Cash (RM)</label>
+                                    <input type="number" step="0.01" id="salesPettyCash" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Sales Cash (RM)</label>
+                                    <input type="number" step="0.01" id="salesSalesCash" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
                             </div>
                         </div>
-
-                        <!-- Flavor Inventory Table -->
+                
+                        <!-- SECTION 2: Platform Sales -->
                         <div>
-                            <h3 class="text-xs font-bold text-indigo-400 uppercase mb-3">Inventory Tracker</h3>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-xs text-left">
-                                    <thead class="text-slate-500 bg-slate-950 uppercase text-[10px]">
+                            <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3">2. Platform Revenue (+ Sales)</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Misi (RM)</label>
+                                    <input type="number" step="0.01" id="salesMisi" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Lalamove (RM)</label>
+                                    <input type="number" step="0.01" id="salesLalamove" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">FoodPanda (RM & Qty)</label>
+                                    <input type="text" id="salesFoodPanda" placeholder="e.g. 178.75 (4)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">GrabFood (RM)</label>
+                                    <input type="number" step="0.01" id="salesGrabFood" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Shopee Food (RM)</label>
+                                    <input type="number" step="0.01" id="salesShopeeFood" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                            </div>
+                        </div>
+                
+                        <!-- SECTION 3: Operational Expenses -->
+                        <div>
+                            <h3 class="text-xs font-bold text-rose-400 uppercase tracking-wider mb-3">3. Operational Expenses (- Tolak)</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Gas (RM)</label>
+                                    <input type="number" step="0.01" id="expGas" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Ais (RM)</label>
+                                    <input type="number" step="0.01" id="expAis" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Beli Barang (RM)</label>
+                                    <input type="number" step="0.01" id="expBeliBarang" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Minyak Kenderaan (RM)</label>
+                                    <input type="number" step="0.01" id="expMinyakKenderaan" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Dobi (RM)</label>
+                                    <input type="number" step="0.01" id="expDobi" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Minyak Masak (RM / Qty)</label>
+                                    <input type="text" id="expMinyakMasak" placeholder="e.g. 5" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50">
+                                </div>
+                            </div>
+                
+                            <!-- Staff Meal Input -->
+                            <div class="mt-3">
+                                <label class="block text-[11px] text-slate-400 mb-1">Staff Meal (List items & names)</label>
+                                <textarea id="expStaffMeal" rows="2" placeholder="1. ARIL - 2&#10;2. ..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500/50 resize-none"></textarea>
+                            </div>
+                        </div>
+                
+                        <!-- SECTION 4: Wastage, Promos & Quality Control -->
+                        <div>
+                            <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3">4. Wastage & Promos</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Ayam Tak Habis</label>
+                                    <input type="text" id="wasteAyamTakHabis" placeholder="e.g. 24 ketul" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Ayam Busuk</label>
+                                    <input type="text" id="wasteAyamBusuk" placeholder="Qty / Details" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Ayam Short</label>
+                                    <input type="text" id="wasteAyamShort" placeholder="Qty / Details" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Review</label>
+                                    <input type="text" id="qReview" placeholder="Customer reviews" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Loyal Kad</label>
+                                    <input type="text" id="qLoyalKad" placeholder="Redemptions count" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-400 mb-1">Promo 10 Pcs Ayam</label>
+                                    <input type="text" id="qPromo10Pcs" placeholder="e.g. 1 Promo Riang" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <label class="block text-[11px] text-slate-400 mb-1">Catatan Additional Notes</label>
+                                <input type="text" id="salesCatatan" placeholder="Additional remarks..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+                
+                        <!-- SECTION 5: Flavor & Side Stock Inventory Table -->
+                        <div>
+                            <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">5. Flavor & Item Inventory Tracker</h3>
+                            <div class="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-950/50">
+                                <table class="w-full text-left text-xs text-slate-300">
+                                    <thead class="bg-slate-950 text-[11px] text-slate-400 uppercase border-b border-slate-800">
                                         <tr>
-                                            <th class="p-3">Flavor</th>
-                                            <th class="p-3 text-center">Prev</th>
-                                            <th class="p-3 text-center">New</th>
-                                            <th class="p-3 text-center">Sold</th>
-                                            <th class="p-3 text-center">Bal</th>
+                                            <th class="p-3 font-semibold">Item / Flavor</th>
+                                            <th class="p-3 font-semibold text-center">Prev Stock</th>
+                                            <th class="p-3 font-semibold text-center">New Stock</th>
+                                            <th class="p-3 font-semibold text-center">Sold</th>
+                                            <th class="p-3 font-semibold text-center">Promo Free</th>
+                                            <th class="p-3 font-semibold text-center">Balance</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="flavorInventoryRows" class="divide-y divide-slate-800"></tbody>
+                                    <tbody id="flavorInventoryRows" class="divide-y divide-slate-800/60">
+                                        <!-- Rendered by JS -->
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
-
-                        <div class="p-6 bg-indigo-900/20 border border-indigo-500/30 rounded-2xl flex justify-between items-center">
-                            <span class="font-bold text-sm">Estimated Total Sales</span>
-                            <span id="totalDailySalesDisplay" class="font-mono text-2xl font-black text-emerald-400">RM 0.00</span>
+                
+                        <!-- Submit Button -->
+                        <div class="flex justify-end pt-4 border-t border-slate-800">
+                            <button type="submit" class="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-950/50 active:scale-95 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                Submit Daily Report
+                            </button>
                         </div>
-
-                        <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg">Submit Report</button>
                     </form>
                 </div>
-            </section>
-            
-            <!-- (Profile & Payslip Sections kept similar but verified) -->
-            <section id="tab-profile" class="tab-content hidden text-center">
-                <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl">
-                    <div class="w-20 h-20 bg-indigo-600 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl font-bold">
-                        <img id="profileAvatarImg" class="w-full h-full object-cover rounded-full hidden" alt="Profile">
-                        <span id="profileNameInitial">H</span>
+
+                <!-- Live Total Sales Summary Card -->
+                <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-5 mb-6 shadow-xl">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div>
+                            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider block">Real-time Calculation</span>
+                            <h4 class="text-lg font-black text-white">Estimated Grand Total Daily Sales</h4>
+                        </div>
+                        <div class="text-right">
+                            <span id="totalDailySalesDisplay" class="font-mono text-3xl font-black text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">RM 0.00</span>
+                        </div>
                     </div>
-                    <h2 id="profileName" class="text-xl font-bold">User Name</h2>
-                    <p id="profileEmail" class="text-sm text-slate-500 mb-8">user@email.com</p>
-                    <button onclick="handleLogout()" class="w-full py-3 bg-rose-600/10 text-rose-500 border border-rose-500/20 rounded-xl font-bold hover:bg-rose-600 hover:text-white transition">Sign Out</button>
                 </div>
             </section>
+
+            <!-- TAB 4: PAYSLIP DOWNLOADER -->
+            <section id="tab-payslip" class="tab-content space-y-6 hidden">
+                <div class="max-w-md mx-auto bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl text-center">
+                    <div class="w-14 h-14 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-2xl mx-auto flex items-center justify-center text-xl mb-4">
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-1">Download Payslip</h3>
+                    <p class="text-xs text-slate-400 mb-6">Select your payment period to export your official salary payslip as a PDF document.</p>
+
+                    <div class="space-y-4 text-left mb-6">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Select Month</label>
+                            <select id="payslipMonth" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                                <option value="January">January</option>
+                                <option value="February">February</option>
+                                <option value="March">March</option>
+                                <option value="April">April</option>
+                                <option value="May">May</option>
+                                <option value="June">June</option>
+                                <option value="July">July</option>
+                                <option value="August" selected>August</option>
+                                <option value="September">September</option>
+                                <option value="October">October</option>
+                                <option value="November">November</option>
+                                <option value="December">December</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Select Year</label>
+                            <select id="payslipYear" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                                <option value="2026" selected>2026</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="downloadPayslipPDF()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/25 transition active:scale-[0.98] flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-pdf"></i> Download PDF Payslip
+                    </button>
+                </div>
+            </section>
+
+            <!-- TAB 5: USER PROFILE -->
+            <section id="tab-profile" class="tab-content space-y-6 hidden">
+                <div class="max-w-md mx-auto bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl text-center">
+                    <div class="w-20 h-20 rounded-2xl overflow-hidden bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mx-auto mb-4 text-2xl">
+                        <i id="profileAvatarFallback" class="fa-solid fa-user"></i>
+                        <img id="profileAvatarImg" class="w-full h-full object-cover hidden" alt="Profile">
+                    </div>
+
+                    <h3 class="text-lg font-bold text-white" id="profileName">Staff Member</h3>
+                    <p class="text-xs text-indigo-400 font-medium mt-0.5" id="profileEmail">user@company.com</p>
+
+                    <div class="mt-6 border-t border-slate-800 pt-6 space-y-3 text-left">
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800/60">
+                            <span class="text-xs text-slate-400">Account Type</span>
+                            <span class="text-xs font-semibold text-slate-200">Google Verified</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800/60">
+                            <span class="text-xs text-slate-400">Portal Access</span>
+                            <span class="text-xs font-semibold text-emerald-400">Authorized</span>
+                        </div>
+                    </div>
+
+                    <button onclick="handleLogout()" class="w-full mt-8 py-3 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 font-semibold rounded-xl transition flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                    </button>
+                </div>
+            </section>
+
         </main>
 
-        <!-- NAV -->
-        <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800 py-3">
-            <div class="max-w-md mx-auto grid grid-cols-5 text-center">
-                <button onclick="switchTab('home')" id="nav-home" class="nav-btn text-indigo-400 flex flex-col items-center gap-1">
-                    <i class="fa-solid fa-house"></i><span class="text-[9px] font-bold">HOME</span>
+        <!-- ==================== FIXED BOTTOM NAVIGATION ==================== -->
+        <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800 py-2 px-4">
+            <div class="max-w-md mx-auto grid grid-cols-5 gap-1 text-center">
+                <button onclick="switchTab('home')" id="nav-home" class="nav-btn flex flex-col items-center py-1.5 text-indigo-400 transition">
+                    <i class="fa-solid fa-house text-base"></i>
+                    <span class="text-[10px] font-medium mt-1">Home</span>
                 </button>
-                <button onclick="switchTab('attendance')" id="nav-attendance" class="nav-btn text-slate-500 flex flex-col items-center gap-1">
-                    <i class="fa-solid fa-calendar"></i><span class="text-[9px] font-bold">LOGS</span>
+
+                <button onclick="switchTab('attendance')" id="nav-attendance" class="nav-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition">
+                    <i class="fa-solid fa-calendar-check text-base"></i>
+                    <span class="text-[10px] font-medium mt-1">Attendance</span>
                 </button>
-                <button onclick="switchTab('sales')" id="nav-sales" class="nav-btn text-slate-500 flex flex-col items-center gap-1">
-                    <i class="fa-solid fa-chart-line"></i><span class="text-[9px] font-bold">SALES</span>
+
+                <button onclick="switchTab('sales')" id="nav-sales" class="nav-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition">
+                    <i class="fa-solid fa-chart-line text-base"></i>
+                    <span class="text-[10px] font-medium mt-1">Sales</span>
                 </button>
-                <button onclick="switchTab('profile')" id="nav-profile" class="nav-btn text-slate-500 flex flex-col items-center gap-1">
-                    <i class="fa-solid fa-user"></i><span class="text-[9px] font-bold">PROFILE</span>
+
+                <button onclick="switchTab('payslip')" id="nav-payslip" class="nav-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition">
+                    <i class="fa-solid fa-file-invoice-dollar text-base"></i>
+                    <span class="text-[10px] font-medium mt-1">Payslip</span>
+                </button>
+
+                <button onclick="switchTab('profile')" id="nav-profile" class="nav-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition">
+                    <i class="fa-solid fa-user text-base"></i>
+                    <span class="text-[10px] font-medium mt-1">Profile</span>
                 </button>
             </div>
         </nav>
     </div>
 
-    <!-- LEAVE MODAL -->
-    <div id="leaveModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6">
-            <h3 class="text-lg font-bold mb-4">Apply for Leave</h3>
+    <!-- Leave Application Modal Pop-up -->
+    <div id="leaveModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-left">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+                <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Apply For Leave</h3>
+                <button onclick="closeLeaveModal()" type="button" class="text-slate-400 hover:text-slate-200 text-lg font-bold px-2">&times;</button>
+            </div>
+    
+            <!-- Form -->
             <form id="leaveForm" onsubmit="handleLeaveSubmit(event)" class="space-y-4">
-                <select id="leaveType" onchange="toggleFileUpload()" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm" required>
-                    <option value="annual">Annual Leave</option>
-                    <option value="medical">Medical Leave (MC)</option>
-                    <option value="off">Off Day</option>
-                </select>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="date" id="leaveStartDate" class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm" required>
-                    <input type="date" id="leaveEndDate" class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm" required>
+                <!-- Leave Type Dropdown -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Leave Type</label>
+                    <select id="leaveType" onchange="toggleFileUpload()" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <option value="">Select Leave Type</option>
+                        <option value="annual">Annual Leave</option>
+                        <option value="medical">Medical Leave (MC)</option>
+                        <option value="emergency">Emergency Leave</option>
+                        <option value="off">Off Day Request</option>
+                    </select>
                 </div>
-                <textarea id="leaveReason" placeholder="Reason..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm" rows="3" required></textarea>
+    
+                <!-- Date Range -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Start Date</label>
+                        <input type="date" id="leaveStartDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">End Date</label>
+                        <input type="date" id="leaveEndDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+    
+                <!-- Reason -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Reason</label>
+                    <textarea id="leaveReason" rows="3" placeholder="Provide reason for leave..." required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+                </div>
+    
+                <!-- Medical Certificate File Upload (Only shows when Medical Leave is selected) -->
                 <div id="fileUploadContainer" class="hidden">
-                    <input type="file" id="mcFile" class="text-xs text-slate-500">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Upload Medical Certificate (MC) <span class="text-rose-400">*</span></label>
+                    <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer bg-slate-950/50 transition" onclick="document.getElementById('mcFile').click()">
+                        <svg class="w-8 h-8 mx-auto text-slate-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        <span id="fileNameDisplay" class="text-xs text-slate-400 block font-medium">Click or Drag & Drop file here</span>
+                        <span class="text-[10px] text-slate-500 block mt-0.5">JPG, PNG, or PDF up to 5MB</span>
+                        <input type="file" id="mcFile" accept="image/*,.pdf" class="hidden" onchange="handleFileSelect(event)">
+                    </div>
                 </div>
-                <div class="flex gap-2">
-                    <button type="button" onclick="closeLeaveModal()" class="flex-1 py-3 bg-slate-800 rounded-xl font-bold">Cancel</button>
-                    <button type="submit" class="flex-1 py-3 bg-indigo-600 rounded-xl font-bold">Submit</button>
+    
+                <!-- Actions -->
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeLeaveModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-md shadow-indigo-900/40">Submit Leave</button>
                 </div>
             </form>
         </div>
     </div>
-
+    
+    <!-- Script Logic -->
     <script>
-        // CONFIG
+        function initPWAEngine() {
+            const manifestObj = {
+                name: "Hemzal Staff Portal",
+                short_name: "Hemzal Staff",
+                start_url: ".",
+                display: "standalone",
+                background_color: "#FFD500",
+                theme_color: "#d1232a",
+                description: "Hemzal Crispy Chicken Staff Portal",
+                icons: [
+                    {
+                        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23FFEAEA'/><path d='M50 20C35 20 28 35 28 50C28 65 40 75 55 75C68 75 75 62 75 50' stroke='%23d1232a' stroke-width='7'/></svg>",
+                        sizes: "192x192 512x512",
+                        type: "image/svg+xml"
+                    }
+                ]
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+            document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(manifestBlob));
+
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    self.addEventListener('install', (e) => self.skipWaiting());
+                    self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+                    self.addEventListener('fetch', (e) => {
+                        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                    });
+                `;
+                const swBlob = new Blob([swCode], { type: 'application/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(err => console.log('SW reg error:', err));
+            }
+        }
+
+        let activeLogKey = null;
+        let activeLogData = null;
+        let timerInterval = null;
+        
+        // Helper function for standard ISO YYYY-MM-DD date format
+        function getISODateString(dateObj = new Date()) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // 1. Real-time Firebase Listener (Detects if Admin clocked in staff for today)
+        function listenAttendanceToday(userEmail) {
+            const todayISO = getISODateString(new Date());
+        
+            db.ref('attendance_logs')
+              .orderByChild('date')
+              .equalTo(todayISO)
+              .on('value', (snapshot) => {
+                  if (timerInterval) clearInterval(timerInterval);
+                  activeLogKey = null;
+                  activeLogData = null;
+        
+                  if (!snapshot.exists()) {
+                      setClockUIState('READY_TO_CLOCK_IN');
+                      return;
+                  }
+        
+                  // Search snapshot for matching user email
+                  const logs = snapshot.val();
+                  for (const key in logs) {
+                      if (logs[key].userEmail === userEmail) {
+                          activeLogKey = key;
+                          activeLogData = logs[key];
+                          break;
+                      }
+                  }
+        
+                  if (!activeLogData) {
+                      setClockUIState('READY_TO_CLOCK_IN');
+                      return;
+                  }
+        
+                  // Case 1: Active shift (Clock-in exists, Clock-out empty)
+                  if (activeLogData.clockIn && !activeLogData.clockOut) {
+                      setClockUIState('CLOCKED_IN', activeLogData);
+                      startRunningTimer(activeLogData.date, activeLogData.clockIn);
+                  } 
+                  // Case 2: Shift completed for today
+                  else if (activeLogData.clockIn && activeLogData.clockOut) {
+                      setClockUIState('SHIFT_COMPLETED', activeLogData);
+                  }
+              });
+        }
+        
+        // 2. Running Ticker Timer
+        function startRunningTimer(dateStr, clockInStr) {
+            if (timerInterval) clearInterval(timerInterval);
+        
+            const startTime = new Date(`${dateStr}T${clockInStr}:00`);
+        
+            function updateDisplay() {
+                const diffMs = new Date() - startTime;
+                if (diffMs < 0) return;
+        
+                const hrs = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
+                const mins = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
+                const secs = String(Math.floor((diffMs % 60000) / 1000)).padStart(2, '0');
+        
+                const timerEl = document.getElementById('sessionTimer');
+                if (timerEl) timerEl.textContent = `${hrs}:${mins}:${secs}`;
+            }
+        
+            updateDisplay();
+            timerInterval = setInterval(updateDisplay, 1000);
+        }
+        
+        // 3. UI Toggle Helper - updates the button, status text/badge/banner and
+        // timer in place (never replaces clockBtn's innerHTML, so #btnText and
+        // its icon stay intact for future updates).
+        function setClockUIState(state, log = null) {
+            const clockBtn = document.getElementById('clockBtn');
+            const btnText = document.getElementById('btnText');
+            const btnIcon = clockBtn ? clockBtn.querySelector('i') : null;
+            const statusText = document.getElementById('statusText');
+            const statusBadge = document.getElementById('statusBadge');
+            const statusBanner = document.getElementById('statusBanner');
+            const timerEl = document.getElementById('sessionTimer');
+        
+            if (!clockBtn) return;
+        
+            if (state === 'CLOCKED_IN') {
+                clockBtn.disabled = false;
+                clockBtn.className = "w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-rose-600 hover:bg-rose-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2";
+                if (btnIcon) btnIcon.className = "fa-solid fa-square text-xs";
+                if (btnText) btnText.textContent = "Clock Out";
+                if (statusText) {
+                    statusText.textContent = log.createdByAdmin
+                        ? "Clocked in by Admin • ON DUTY"
+                        : "ON DUTY • Shift active";
+                }
+                if (statusBanner) statusBanner.className = "p-6 rounded-2xl bg-lime-950/20 border border-lime-500/40 text-center mb-6 transition-all duration-300 shadow-lg shadow-lime-950/50";
+                if (statusBadge) {
+                    statusBadge.textContent = "ON DUTY";
+                    statusBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-lime-500/20 text-lime-400 border border-lime-500/40 animate-pulse";
+                }
+                if (timerEl) timerEl.className = "font-mono text-3xl font-bold text-lime-400 my-1";
+            } else if (state === 'SHIFT_COMPLETED') {
+                clockBtn.disabled = true;
+                clockBtn.className = "w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-slate-700 cursor-not-allowed opacity-70 flex items-center justify-center gap-2";
+                if (btnIcon) btnIcon.className = "fa-solid fa-check text-xs";
+                if (btnText) btnText.textContent = "Shift Completed";
+                if (statusText) statusText.textContent = `Shift ended at ${log.clockOut}`;
+                if (statusBanner) statusBanner.className = "p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6 transition-all duration-300";
+                if (statusBadge) {
+                    statusBadge.textContent = "COMPLETED";
+                    statusBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700";
+                }
+                if (timerEl) {
+                    timerEl.textContent = log.durationText || "00:00:00";
+                    timerEl.className = "font-mono text-3xl font-bold text-slate-400 my-1";
+                }
+            } else {
+                clockBtn.disabled = false;
+                clockBtn.className = "w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2";
+                if (btnIcon) btnIcon.className = "fa-solid fa-play text-xs";
+                if (btnText) btnText.textContent = "Clock In";
+                if (statusText) statusText.textContent = "OFF DUTY • Ready to clock in";
+                if (statusBanner) statusBanner.className = "p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6 transition-all duration-300";
+                if (statusBadge) {
+                    statusBadge.textContent = "OFFLINE";
+                    statusBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700";
+                }
+                if (timerEl) {
+                    timerEl.textContent = "00:00:00";
+                    timerEl.className = "font-mono text-3xl font-bold text-slate-500 my-1";
+                }
+            }
+        }
+        
+        let deferredPWAInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPWAInstallPrompt = e;
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (installBtn) installBtn.style.display = 'inline-flex';
+        });
+
+        function triggerAppInstall() {
+            if (deferredPWAInstallPrompt) {
+                deferredPWAInstallPrompt.prompt();
+                deferredPWAInstallPrompt.userChoice.then((choice) => {
+                    if (choice.outcome === 'accepted') {
+                        showToast('App installed on your device!', true);
+                    }
+                    deferredPWAInstallPrompt = null;
+                    document.getElementById('pwa-install-btn').style.display = 'none';
+                });
+            } else {
+                showToast('To install: Tap browser menu & select "Add to Home Screen"', true);
+            }
+        }
+
+        // 1. FIREBASE CONFIGURATION
         const firebaseConfig = {
             apiKey: "AIzaSyD8PVd9v61cAmKoe_RjB2Wc1AswASLIFWo",
             authDomain: "staffportal-f740f.firebaseapp.com",
@@ -260,401 +821,1309 @@
             projectId: "staffportal-f740f",
             storageBucket: "staffportal-f740f.firebasestorage.app",
             messagingSenderId: "739455943513",
-            appId: "1:739455943513:web:84850f115af46cafcb8248"
+            appId: "1:739455943513:web:84850f115af46cafcb8248",
+            measurementId: "G-2BK6WZV8TC"
         };
+
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-        const ALLOWED_EMAILS = ["hassanhazril@gmail.com", "hazpiqah@gmail.com"];
-        const STORE_LAT = 3.1307185;
-        const STORE_LNG = 101.7762545;
-        const MAX_RADIUS = 100;
+        // Whitelist of authorized emails
+        const ALLOWED_EMAILS = [
+            "hassanhazril@gmail.com",
+            "hazpiqah@gmail.com"
+        ];
 
-        let currentUserEmail = "";
         let attendanceLogs = [];
-        let activeLogKey = null;
-        let activeLogData = null;
-        let timerInterval = null;
-        let currentViewDate = new Date();
+        let salesLogs = [];
+        let currentUserEmail = "";
 
-        // UTILS
-        function showToast(msg, type = 'info') {
+        // Toast Helper
+        function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            toast.className = `px-4 py-3 rounded-xl border backdrop-blur-lg shadow-2xl text-xs font-bold transition-all duration-300 pointer-events-auto ${type === 'error' ? 'bg-rose-900/90 border-rose-500 text-rose-100' : 'bg-slate-900/90 border-indigo-500 text-indigo-100'}`;
-            toast.innerText = msg;
+            const bgClass = type === 'error' ? 'bg-rose-950/90 border-rose-800 text-rose-200' : 'bg-slate-900/90 border-indigo-500/30 text-slate-200';
+            const icon = type === 'error' ? 'fa-circle-xmark text-rose-400' : 'fa-circle-check text-indigo-400';
+
+            toast.className = `px-4 py-3 rounded-xl border backdrop-blur-lg shadow-2xl text-xs font-medium flex items-center gap-3 transition-all duration-300 pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-sm"></i> <span>${message}</span>`;
+
             container.appendChild(toast);
-            setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 500); }, 3000);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
         }
 
-        function getISODate(d = new Date()) {
-            return d.toISOString().split('T')[0];
+        // Tab Switcher
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-indigo-400');
+                btn.classList.add('text-slate-500');
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            activeBtn.classList.remove('text-slate-500');
+            activeBtn.classList.add('text-indigo-400');
         }
 
-        function parseLogDate(dateStr) {
-            if (!dateStr) return null;
-            return new Date(dateStr);
-        }
+        // Auth Listener
+        auth.onAuthStateChanged((user) => {
+            const loginView = document.getElementById('loginView');
+            const portalView = document.getElementById('portalView');
 
-        // AUTH
-        auth.onAuthStateChanged(user => {
             if (user) {
-                currentUserEmail = user.email.toLowerCase();
+                currentUserEmail = (user.email || '').toLowerCase();
+                const empId = user.uid.substring(0, 8).toUpperCase();
+                listenUserLeaveRequests(empId);
+                // Initialize presence tracking for signed-in staff
+                setupPresenceSystem(user);
+                // Auto-check for absent status after 11:00 AM
+                checkAutoAbsentStatus(user);
+                
+                initDatabaseListeners();
+                
                 if (!ALLOWED_EMAILS.includes(currentUserEmail)) {
-                    showToast("Access Denied", "error");
-                    auth.signOut();
+                    auth.signOut().then(() => {
+                        showToast(`Access Denied: ${currentUserEmail} is not authorized.`, 'error');
+                    });
                     return;
                 }
-                document.getElementById('loginView').classList.add('hidden');
-                document.getElementById('portalView').classList.remove('hidden');
-                document.getElementById('userDisplayName').innerText = user.displayName;
-                document.getElementById('userEmailDisplay').innerText = user.email;
-                document.getElementById('profileName').innerText = user.displayName;
-                document.getElementById('profileEmail').innerText = user.email;
-                if(user.photoURL) {
-                    document.getElementById('userAvatarImg').src = user.photoURL;
-                    document.getElementById('userAvatarImg').classList.remove('hidden');
-                    document.getElementById('userAvatarFallback').classList.add('hidden');
-                    document.getElementById('profileAvatarImg').src = user.photoURL;
-                    document.getElementById('profileAvatarImg').classList.remove('hidden');
+
+                loginView.classList.add('hidden');
+                portalView.classList.remove('hidden');
+
+                // Update UI Profile Info
+                const userName = user.displayName || user.email.split('@')[0];
+                document.getElementById('userDisplayName').textContent = userName;
+                document.getElementById('userEmailDisplay').textContent = user.email;
+                document.getElementById('profileName').textContent = userName;
+                document.getElementById('profileEmail').textContent = user.email;
+                
+                // Update Clocking Terminal display badge
+                const clockUserBadge = document.getElementById('clockTerminalUser');
+                if (clockUserBadge) {
+                    clockUserBadge.textContent = `${userName} (${user.uid.substring(0, 8)})`;
                 }
-                initListeners(user);
-                checkAutoAbsentStatus(user);
+
+                const avatarImg = document.getElementById('userAvatarImg');
+                const avatarFallback = document.getElementById('userAvatarFallback');
+                const profileImg = document.getElementById('profileAvatarImg');
+                const profileFallback = document.getElementById('profileAvatarFallback');
+
+                if (user.photoURL) {
+                    avatarImg.src = user.photoURL;
+                    avatarImg.classList.remove('hidden');
+                    avatarFallback.classList.add('hidden');
+
+                    profileImg.src = user.photoURL;
+                    profileImg.classList.remove('hidden');
+                    profileFallback.classList.add('hidden');
+                }
+
+                // Default Date Input for Sales
+                document.getElementById('salesDate').value = new Date().toISOString().slice(0, 10);
+
+                initDatabaseListeners();
+                listenAttendanceToday(user.email);
             } else {
-                document.getElementById('loginView').classList.remove('hidden');
-                document.getElementById('portalView').classList.add('hidden');
+                portalView.classList.add('hidden');
+                loginView.classList.remove('hidden');
             }
         });
 
-        function handleGoogleLogin() {
-            auth.signInWithPopup(googleProvider).catch(e => showToast(e.message, "error"));
+        function listenUserLeaveRequests(empId) {
+            db.ref('leave_requests')
+              .orderByChild('empId')
+              .equalTo(empId)
+              .on('value', (snapshot) => {
+                  const badge = document.getElementById('leaveStatusBadge');
+                  const container = document.getElementById('leaveInfoContainer');
+                  
+                  if (!snapshot.exists()) {
+                      badge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 uppercase tracking-wider";
+                      badge.innerHTML = `<span>No Active Leave</span>`;
+                      container.innerHTML = `<p class="text-center text-slate-500 py-1">No pending leave requests found.</p>`;
+                      return;
+                  }
+        
+                  const requests = Object.values(snapshot.val());
+                  const latest = requests[requests.length - 1]; // get latest entry
+        
+                  // Parse start and end date schema
+                  let displayDate = 'N/A';
+                  if (latest.startDate && latest.endDate) {
+                      displayDate = latest.startDate === latest.endDate 
+                          ? latest.startDate 
+                          : `${latest.startDate} ~ ${latest.endDate}`;
+                  } else {
+                      displayDate = latest.startDate || latest.endDate || latest.leaveDate || 'N/A';
+                  }
+        
+                  const displayType = latest.leaveType || latest.type || 'Leave Request';
+                  const displayReason = latest.reason || 'N/A';
+        
+                  let badgeStyle = "bg-amber-500/10 text-amber-400 border-amber-500/20";
+                  let dotColor = "bg-amber-400";
+                  
+                  if (latest.status === "APPROVED") {
+                      badgeStyle = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+                      dotColor = "bg-emerald-400";
+                  } else if (latest.status === "REJECTED") {
+                      badgeStyle = "bg-rose-500/10 text-rose-400 border-rose-500/20";
+                      dotColor = "bg-rose-400";
+                  }
+        
+                  badge.className = `px-2.5 py-1 rounded-full text-[10px] font-bold border ${badgeStyle} uppercase tracking-wider flex items-center gap-1.5`;
+                  badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span><span>${latest.status || 'PENDING'}</span>`;
+        
+                  container.innerHTML = `
+                      <div class="flex justify-between items-center text-slate-400">
+                          <span>Type:</span>
+                          <span class="font-semibold text-slate-200">${displayType}</span>
+                      </div>
+                      <div class="flex justify-between items-center text-slate-400">
+                          <span>Date Requested:</span>
+                          <span class="font-mono text-indigo-300 font-medium">${displayDate}</span>
+                      </div>
+                      <div class="flex justify-between items-center text-slate-400">
+                          <span>Reason:</span>
+                          <span class="italic text-slate-300 max-w-[170px] truncate">${displayReason}</span>
+                      </div>
+                  `;
+              });
         }
-
-        function handleLogout() { auth.signOut(); }
-
-        // NAVIGATION
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-indigo-400', 'text-slate-500'));
-            document.getElementById(`nav-${tabId}`).classList.replace('text-slate-500', 'text-indigo-400');
-            if(tabId === 'attendance') renderAttendanceUI();
-        }
-
-        // CLOCKING LOGIC
-        function initListeners(user) {
-            const today = getISODate();
-            db.ref('attendance_logs').orderByChild('date').equalTo(today).on('value', snap => {
-                activeLogKey = null;
-                activeLogData = null;
-                const logs = snap.val();
-                for (let key in logs) {
-                    if (logs[key].userEmail === currentUserEmail) {
-                        activeLogKey = key;
-                        activeLogData = logs[key];
-                    }
-                }
-                updateClockUI();
-            });
-
-            db.ref('attendance_logs').on('value', snap => {
-                const data = snap.val();
-                attendanceLogs = data ? Object.values(data).reverse() : [];
-            });
-
-            const empId = user.uid.substring(0, 8).toUpperCase();
-            db.ref('leave_requests').orderByChild('empId').equalTo(empId).on('value', snap => {
-                const badge = document.getElementById('leaveStatusBadge');
-                const container = document.getElementById('leaveInfoContainer');
-                if (!snap.exists()) {
-                    badge.innerText = "NONE";
-                    container.innerHTML = `<p class="text-slate-500 text-center italic">No active requests</p>`;
-                    return;
-                }
-                const reqs = Object.values(snap.val());
-                const latest = reqs[reqs.length - 1];
-                badge.innerText = latest.status;
-                badge.className = `px-2 py-0.5 rounded-full text-[10px] font-bold ${latest.status === 'APPROVED' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`;
-                container.innerHTML = `
-                    <div class="flex justify-between"><span>Type:</span><span class="font-bold">${latest.leaveType}</span></div>
-                    <div class="flex justify-between"><span>Date:</span><span class="font-mono text-indigo-400">${latest.startDate}</span></div>
-                    <div class="truncate text-slate-400 mt-1">${latest.reason}</div>
-                `;
-            });
-        }
-
-        function updateClockUI() {
-            const btn = document.getElementById('clockBtn');
-            const btnText = document.getElementById('btnText');
-            const statusText = document.getElementById('statusText');
-            const badge = document.getElementById('statusBadge');
-            const timerDisplay = document.getElementById('sessionTimer');
-
-            if (timerInterval) clearInterval(timerInterval);
-
-            if (activeLogData && activeLogData.clockIn && !activeLogData.clockOut) {
-                // Clocked In
-                btn.className = "w-full py-4 rounded-xl font-bold text-white bg-rose-600 shadow-lg";
-                btnText.innerText = "Clock Out";
-                statusText.innerText = "ON DUTY • Shift active";
-                badge.innerText = "ON DUTY";
-                badge.className = "px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500 text-white animate-pulse";
-                startTimer(activeLogData.date, activeLogData.clockIn);
-            } else if (activeLogData && activeLogData.clockOut) {
-                // Completed
-                btn.disabled = true;
-                btn.className = "w-full py-4 rounded-xl font-bold text-white bg-slate-800 opacity-50 cursor-not-allowed";
-                btnText.innerText = "Shift Completed";
-                statusText.innerText = `Ended at ${activeLogData.clockOut}`;
-                badge.innerText = "FINISHED";
-                badge.className = "px-2.5 py-1 rounded-full text-[10px] font-black bg-slate-700 text-slate-400";
-                timerDisplay.innerText = activeLogData.durationText;
-            } else {
-                // Ready
-                btn.disabled = false;
-                btn.className = "w-full py-4 rounded-xl font-bold text-white bg-indigo-600 shadow-lg";
-                btnText.innerText = "Clock In";
-                statusText.innerText = "OFF DUTY • Ready to clock in";
-                badge.innerText = "OFFLINE";
-                badge.className = "px-2.5 py-1 rounded-full text-[10px] font-black bg-slate-800 text-slate-500";
-                timerDisplay.innerText = "00:00:00";
-            }
-        }
-
-        function startTimer(date, time) {
-            const start = new Date(`${date}T${time}:00`);
-            const display = document.getElementById('sessionTimer');
-            timerInterval = setInterval(() => {
-                const diff = new Date() - start;
-                const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
-                const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
-                const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
-                display.innerText = `${h}:${m}:${s}`;
-            }, 1000);
-        }
-
-        async function toggleClock() {
+        
+        // Create new leave aligned with startDate and endDate fields
+        async function requestLeavePrompt() {
             const user = auth.currentUser;
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-            const mins = now.getHours() * 60 + now.getMinutes();
-
-            // Geofence check
-            showToast("Verifying location...");
-            const pos = await new Promise(res => navigator.geolocation.getCurrentPosition(res, () => res(null)));
-            if (!pos) return showToast("GPS Permission Required", "error");
-            
-            const R = 6371e3; 
-            const φ1 = pos.coords.latitude * Math.PI/180;
-            const φ2 = STORE_LAT * Math.PI/180;
-            const Δφ = (STORE_LAT-pos.coords.latitude) * Math.PI/180;
-            const Δλ = (STORE_LNG-pos.coords.longitude) * Math.PI/180;
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const dist = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-
-            if (dist > MAX_RADIUS) return showToast(`Access Denied: You are ${dist.toFixed(0)}m away.`, "error");
-
-            if (activeLogKey && !activeLogData.clockOut) {
-                // CLOCK OUT (8PM - 9PM)
-                if (mins < 1200 || mins > 1320) return showToast("Clock-out allowed 8:00PM - 10:00PM", "error");
-                const start = new Date(`${activeLogData.date}T${activeLogData.clockIn}:00`);
-                const diffMin = Math.round((now - start)/60000);
-                const dur = `${Math.floor(diffMin/60)}h ${diffMin%60}m`;
-                await db.ref(`attendance_logs/${activeLogKey}`).update({ clockOut: timeStr, durationText: dur });
-                showToast("Clock-out successful");
-            } else {
-                // CLOCK IN (8AM - 11AM)
-                if (mins < 480 || mins > 660) return showToast("Clock-in allowed 8:00AM - 11:00AM", "error");
-                const punct = mins > 570 ? "LATE" : "ON TIME";
-                await db.ref('attendance_logs').push({
-                    date: getISODate(),
-                    userEmail: currentUserEmail,
-                    empName: user.displayName,
-                    clockIn: timeStr,
-                    clockOut: "",
-                    punctualityStatus: punct,
-                    statusColor: punct === 'LATE' ? 'amber' : 'emerald',
-                    durationText: "In Progress"
-                });
-                showToast(`Clocked in: ${punct}`);
-            }
-        }
-
-        // SALES & INVENTORY
-        const FLAVORS = ['Cheese', 'Korean', 'Garlic', 'Furikake', 'Togarashi', 'Coleslaw'];
-        function initInventory() {
-            const tbody = document.getElementById('flavorInventoryRows');
-            tbody.innerHTML = FLAVORS.map(f => `
-                <tr class="hover:bg-slate-900/50">
-                    <td class="p-3 font-bold">${f}</td>
-                    <td><input type="number" data-f="${f}" data-c="prev" class="w-12 bg-transparent text-center" oninput="calcSold('${f}')"></td>
-                    <td><input type="number" data-f="${f}" data-c="new" class="w-12 bg-transparent text-center" oninput="calcSold('${f}')"></td>
-                    <td><input type="number" data-f="${f}" data-c="sold" class="w-12 bg-emerald-400/10 text-emerald-400 font-bold text-center" readonly></td>
-                    <td><input type="number" data-f="${f}" data-c="bal" class="w-12 bg-transparent text-center" oninput="calcSold('${f}')"></td>
-                </tr>
-            `).join('');
-        }
-        initInventory();
-
-        function calcSold(f) {
-            const prev = +document.querySelector(`[data-f="${f}"][data-c="prev"]`).value || 0;
-            const n = +document.querySelector(`[data-f="${f}"][data-c="new"]`).value || 0;
-            const bal = +document.querySelector(`[data-f="${f}"][data-c="bal"]`).value || 0;
-            const soldInput = document.querySelector(`[data-f="${f}"][data-c="sold"]`);
-            
-            let sold = (f === 'Coleslaw') ? (n - bal) : (prev + n - bal);
-            soldInput.value = Math.max(0, sold);
-            calcTotalSales();
-        }
-
-        function calcTotalSales() {
-            // Placeholder math for your specific pricing
-            let total = 0;
-            FLAVORS.forEach(f => {
-                const sold = +document.querySelector(`[data-f="${f}"][data-c="sold"]`).value || 0;
-                total += (f === 'Coleslaw' ? sold * 3.5 : sold * 2.0);
-            });
-            document.getElementById('totalDailySalesDisplay').innerText = `RM ${total.toFixed(2)}`;
-            return total;
-        }
-
-        function handleSalesSubmit(e) {
-            e.preventDefault();
-            const data = {
-                date: document.getElementById('salesDate').value,
-                cawangan: document.getElementById('salesCawangan').value,
-                total: calcTotalSales(),
-                user: currentUserEmail,
-                timestamp: Date.now()
-            };
-            db.ref('daily_sales').push(data).then(() => {
-                showToast("Sales Submitted");
-                e.target.reset();
-                initInventory();
-            });
-        }
-
-        // CALENDAR
-        function renderAttendanceUI() {
-            const grid = document.getElementById('calendarGrid');
-            const label = document.getElementById('calendarMonthYear');
-            grid.innerHTML = '';
-            
-            const year = currentViewDate.getFullYear();
-            const month = currentViewDate.getMonth();
-            label.innerText = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-            const first = new Date(year, month, 1).getDay();
-            const days = new Date(year, month + 1, 0).getDate();
-
-            for (let i = 0; i < first; i++) grid.innerHTML += `<div></div>`;
-
-            for (let d = 1; d <= days; d++) {
-                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const log = attendanceLogs.find(l => l.date === dateStr && l.userEmail === currentUserEmail);
-                
-                let bg = "bg-slate-800/30 text-slate-500";
-                if(log) {
-                    if(log.statusColor === 'emerald') bg = "bg-emerald-500 text-white";
-                    else if(log.statusColor === 'amber') bg = "bg-amber-500 text-white";
-                    else if(log.statusColor === 'red') bg = "bg-rose-500 text-white";
-                }
-
-                grid.innerHTML += `<button onclick="showDayLogs('${dateStr}')" class="h-8 w-8 mx-auto rounded-lg text-[10px] font-bold ${bg}">${d}</button>`;
-            }
-        }
-
-        function showDayLogs(dateStr) {
-            const container = document.getElementById('selectedDateLogs');
-            const logs = attendanceLogs.filter(l => l.date === dateStr && l.userEmail === currentUserEmail);
-            
-            if(logs.length === 0) {
-                container.innerHTML = `<div class="p-4 text-center text-slate-500 text-xs">No logs for ${dateStr}</div>`;
+            if (!user) {
+                showToast("Please log in first.", "error");
                 return;
             }
-
-            container.innerHTML = logs.map(l => `
-                <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex justify-between items-center">
-                    <div>
-                        <div class="text-[10px] text-slate-500 font-bold uppercase">${l.date}</div>
-                        <div class="text-sm font-bold text-indigo-400">${l.punctualityStatus}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-xs font-mono">${l.clockIn} - ${l.clockOut || '--:--'}</div>
-                        <div class="text-[10px] text-slate-500">${l.durationText}</div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function changeMonth(dir) {
-            currentViewDate.setMonth(currentViewDate.getMonth() + dir);
-            renderAttendanceUI();
-        }
-
-        // LEAVE MODAL SYSTEM
-        function openLeaveModal() { document.getElementById('leaveModal').classList.remove('hidden'); }
-        function closeLeaveModal() { document.getElementById('leaveModal').classList.add('hidden'); }
-        function toggleFileUpload() {
-            document.getElementById('fileUploadContainer').classList.toggle('hidden', document.getElementById('leaveType').value !== 'medical');
-        }
-
-        async function handleLeaveSubmit(e) {
-            e.preventDefault();
-            const user = auth.currentUser;
-            const data = {
-                empId: user.uid.substring(0, 8).toUpperCase(),
-                empName: user.displayName,
-                userEmail: currentUserEmail,
-                leaveType: document.getElementById('leaveType').value,
-                startDate: document.getElementById('leaveStartDate').value,
-                endDate: document.getElementById('leaveEndDate').value,
-                reason: document.getElementById('leaveReason').value,
+        
+            const leaveType = prompt("Enter Leave Type:", "Annual Leave");
+            if (!leaveType) return;
+        
+            const startDate = prompt("Start Date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+            if (!startDate) return;
+        
+            const endDate = prompt("End Date (YYYY-MM-DD):", startDate);
+            if (!endDate) return;
+        
+            const reason = prompt("Enter Reason:", "Medical / Personal");
+            if (!reason) return;
+        
+            const empName = user.displayName || user.email.split('@')[0];
+            const empId = user.uid.substring(0, 8).toUpperCase();
+        
+            const newLeaveRef = db.ref('leave_requests').push();
+            await newLeaveRef.set({
+                id: newLeaveRef.key,
+                empId,
+                empName,
+                userEmail: user.email,
+                leaveType,
+                startDate,
+                endDate,
+                reason,
                 status: 'PENDING',
-                createdAt: Date.now()
-            };
-            db.ref('leave_requests').push(data).then(() => {
-                showToast("Leave Submitted");
-                closeLeaveModal();
+                createdAt: new Date().toISOString()
+            });
+        
+            showToast("Leave request submitted successfully!", "info");
+        }
+
+        // Google Login
+        function handleGoogleLogin() {
+            auth.signInWithPopup(googleProvider)
+                .then((result) => {
+                    const email = (result.user.email || '').toLowerCase();
+                    if (ALLOWED_EMAILS.includes(email)) {
+                        showToast(`Signed in as ${result.user.displayName || result.user.email}`);
+                    }
+                })
+                .catch((err) => showToast(err.message, 'error'));
+        }
+
+        function handleLogout() {
+            auth.signOut().then(() => showToast("Signed out."));
+        }
+
+        // Realtime DB Listeners
+        function initDatabaseListeners() {
+            db.ref('attendance_logs').on('value', (snapshot) => {
+                const data = snapshot.val();
+                attendanceLogs = data ? Object.values(data).reverse() : [];
+                renderAttendanceUI();
+                lockSalesFormIfAbsent();
+            });
+
+            // NOTE: sales reports are written to 'sales_updates' by handleSalesSubmit()
+            // (and read from the same node by the admin dashboard), so this listener
+            // must watch 'sales_updates' too - it previously watched an unused
+            // 'daily_sales' node and never received any data.
+            db.ref('sales_updates').on('value', (snapshot) => {
+                const data = snapshot.val();
+                salesLogs = data ? Object.values(data).reverse() : [];
+                renderSalesTable();
             });
         }
 
-        function checkAutoAbsentStatus(user) {
-            const now = new Date();
-            const currentMins = now.getHours() * 60 + now.getMinutes();
-            if (currentMins < 660) return; // Not past 11:00 AM
-
-            const today = getISODate();
-            db.ref('attendance_logs').orderByChild('date').equalTo(today).once('value', snap => {
-                let exists = false;
-                snap.forEach(child => { if(child.val().userEmail === currentUserEmail) exists = true; });
-                
-                if(!exists) {
-                    db.ref('attendance_logs').push({
-                        date: today,
-                        userEmail: currentUserEmail,
-                        empName: user.displayName,
-                        clockIn: "--:--",
-                        clockOut: "--:--",
-                        punctualityStatus: "ABSENT",
-                        statusColor: "red",
-                        durationText: "0h 0m"
+        // Firebase Presence System (Auto Online/Offline)
+        function setupPresenceSystem(user) {
+            if (!user) return;
+        
+            const userPresenceRef = db.ref(`presence/${user.uid}`);
+            const connectedRef = db.ref('.info/connected');
+        
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    // Tell Firebase server to automatically set OFFLINE when connection drops or tab closes
+                    userPresenceRef.onDisconnect().set({
+                        status: 'OFFLINE',
+                        email: user.email,
+                        lastSeen: firebase.database.ServerValue.TIMESTAMP
+                    });
+        
+                    // Set current state to ONLINE
+                    userPresenceRef.set({
+                        status: 'ONLINE',
+                        email: user.email,
+                        lastSeen: firebase.database.ServerValue.TIMESTAMP
                     });
                 }
             });
         }
-
-        // CLOCK TICKER
-        setInterval(() => {
+        
+        // Live header clock - just ticks the time/date display in the top bar.
+        // Shift status (ON DUTY / OFF DUTY / shift timer / clock button) is
+        // driven entirely by listenAttendanceToday() + setClockUIState(),
+        // which reflect the real attendance_logs record - not this ticker.
+        function updateClock() {
             const now = new Date();
-            document.getElementById('liveTime').innerText = now.toLocaleTimeString('en-GB');
-            document.getElementById('liveDate').innerText = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-        }, 1000);
+            const liveTimeEl = document.getElementById('liveTime');
+            const liveDateEl = document.getElementById('liveDate');
+            if (liveTimeEl) liveTimeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (liveDateEl) liveDateEl.textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
 
-        // PWA ENGINE
-        function triggerAppInstall() { /* Standard PWA prompt logic */ }
+        // Store Location Target & Geofence Radius Config
+        const STORE_LAT = 3.130718500000013;
+        const STORE_LNG = 101.7762545;
+        const MAX_ALLOWED_RADIUS_METERS = 100;
+
+        // Haversine formula to calculate distance in meters
+        function getDistanceInMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // Earth's radius in meters
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return Math.round(R * c);
+        }
+        
+        // Fetch current latitude and longitude using Browser Geolocation API
+        function getCurrentLocation() {
+            return new Promise((resolve) => {
+                if (!window.isSecureContext && window.location.hostname !== "localhost") {
+                    showToast("Location denied: Website must be served over HTTPS.", "error");
+                    resolve({ status: "FAILED", lat: null, lng: null });
+                    return;
+                }
+        
+                if (!navigator.geolocation) {
+                    showToast("Geolocation is not supported by your mobile browser.", "error");
+                    resolve({ status: "FAILED", lat: null, lng: null });
+                    return;
+                }
+        
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve({ status: "SUCCESS", lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                    (err) => {
+                        let msg = "GPS error.";
+                        if (err.code === err.PERMISSION_DENIED) msg = "Location permission denied on device.";
+                        if (err.code === err.POSITION_UNAVAILABLE) msg = "GPS signal unavailable.";
+                        if (err.code === err.TIMEOUT) msg = "Location request timed out.";
+                        
+                        showToast(msg, "error");
+                        resolve({ status: "FAILED", lat: null, lng: null });
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            });
+        }
+
+        // Clock In/Out using Google Authentication credentials & Geolocation tracking
+        async function toggleClock() {
+            const user = auth.currentUser;
+            if (!user) {
+                showToast("No active Google session found.", "error");
+                return;
+            }
+        
+            const empName = user.displayName || user.email.split('@')[0];
+            const now = new Date();
+            const todayISO = getISODateString(now);
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            
+            // Calculate current time in total minutes from midnight
+            const currentMinutes = (now.getHours() * 60) + now.getMinutes();
+        
+            // Time boundaries (in minutes)
+            const time800AM  = 8 * 60;        // 480 mins (08:00)
+            const time930AM  = 9 * 60 + 30;   // 570 mins (09:30)
+            const time1100AM = 11 * 60;       // 660 mins (11:00)
+            const time800PM  = 20 * 60;       // 1200 mins (20:00)
+            const time900PM  = 21 * 60;       // 1260 mins (21:00)
+        
+            showToast("Capturing location...", "info");
+            const location = await getCurrentLocation();
+        
+            // --- 100m GEOFENCE VALIDATION CHECK ---
+            if (!location || !location.lat || !location.lng) {
+                showToast("Unable to acquire your location. Please turn on GPS.", "error");
+                return;
+            }
+        
+            const distance = getDistanceInMeters(location.lat, location.lng, STORE_LAT, STORE_LNG);
+        
+            if (distance > MAX_ALLOWED_RADIUS_METERS) {
+                showToast(`Access Denied! You are ${distance}m away. Must be within 100m of main location.`, "error");
+                return;
+            }
+            // --------------------------------------
+        
+            // --- CASE 1: CLOCK OUT (Active log exists without clockOut) ---
+            if (activeLogKey && activeLogData && !activeLogData.clockOut) {
+                if (currentMinutes < time800PM || currentMinutes > time900PM) {
+                    showToast("Clock-out is only allowed between 8:00 PM and 9:00 PM.", "error");
+                    return;
+                }
+        
+                const startTime = new Date(`${activeLogData.date}T${activeLogData.clockIn}:00`);
+                const diffMs = now - startTime;
+                const totalMinutes = Math.max(1, Math.round(diffMs / 60000));
+                const hrs = Math.floor(totalMinutes / 60);
+                const mins = totalMinutes % 60;
+                const durationText = `${hrs}h ${mins}m`;
+        
+                await db.ref(`attendance_logs/${activeLogKey}`).update({
+                    clockOut: timeStr,
+                    durationText: durationText,
+                    lastModifiedAt: Date.now(),
+                    clockOutLocation: location
+                });
+        
+                showToast(`Clocked out. Duration: ${durationText}`);
+                return;
+            }
+        
+            // --- CASE 2: SHIFT ALREADY COMPLETED TODAY ---
+            if (activeLogData && activeLogData.clockOut) {
+                showToast("Access Denied: You have already completed your shift for today.", "error");
+                return;
+            }
+        
+            // --- CASE 3: CLOCK IN ---
+            let punctualityStatus = "";
+            let statusColor = "";
+            let remarks = "";
+        
+            if (currentMinutes >= time800AM && currentMinutes <= time930AM) {
+                punctualityStatus = "ON TIME";
+                statusColor = "green";
+            } else if (currentMinutes > time930AM && currentMinutes <= time1100AM) {
+                punctualityStatus = "LATE";
+                statusColor = "amber";
+                remarks = "Late";
+            } else {
+                showToast("Clock-in is only allowed between 8:00 AM and 11:00 AM.", "error");
+                return;
+            }
+        
+            const newLogRef = db.ref('attendance_logs').push();
+            await newLogRef.set({
+                autoGenerated: false,
+                clockIn: timeStr,
+                clockOut: "",
+                createdByAdmin: false,
+                date: todayISO,
+                durationText: "In Progress",
+                editedByAdmin: false,
+                empName: empName,
+                hasAttachment: false,
+                lastModifiedAt: Date.now(),
+                punctualityStatus: punctualityStatus,
+                remarks: remarks,
+                statusColor: statusColor,
+                timestamp: Date.now(),
+                userEmail: user.email,
+                clockInLocation: location
+            });
+        
+            showToast(`Clocked in (${punctualityStatus}): ${empName}`);
+        }
+
+        let currentViewDate = new Date();
+        let filterDateString = null;
+
+        function changeMonth(offset) {
+            currentViewDate.setMonth(currentViewDate.getMonth() + offset);
+            renderAttendanceUI();
+        }
+
+        function selectDate(dateStr) {
+            filterDateString = dateStr;
+            renderAttendanceUI();
+        }
+
+        function clearDateFilter() {
+            filterDateString = null;
+            renderAttendanceUI();
+        }
+
+        // Helper to reliably parse "DD/MM/YYYY" or ISO date strings
+        function parseLogDate(dateStr) {
+            if (!dateStr) return null;
+            if (typeof dateStr === 'string' && dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3 && parts[2].length === 4) {
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1; // 0-indexed month
+                    const year = parseInt(parts[2], 10);
+                    return new Date(year, month, day);
+                }
+            }
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        
+        function renderCalendarGrid() {
+            const grid = document.getElementById('calendarGrid');
+            const monthYearLabel = document.getElementById('calendarMonthYear');
+        
+            if (!grid || !monthYearLabel) return;
+            grid.innerHTML = '';
+        
+            const year = currentViewDate.getFullYear();
+            const month = currentViewDate.getMonth();
+        
+            monthYearLabel.textContent = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+            const prevMonthDays = new Date(year, month, 0).getDate();
+        
+            // Midnight today for past/future comparison
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+        
+            const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
+        
+            // 1. Previous Month Padding Days
+            for (let i = firstDayIndex; i > 0; i--) {
+                const dayNum = prevMonthDays - i + 1;
+                const cell = document.createElement('div');
+                cell.className = 'h-9 w-9 mx-auto flex items-center justify-center text-xs text-slate-700 pointer-events-none font-medium';
+                cell.textContent = dayNum;
+                grid.appendChild(cell);
+            }
+        
+            // 2. Current Month Days
+            for (let day = 1; day <= totalDaysInMonth; day++) {
+                const dateObj = new Date(year, month, day);
+                dateObj.setHours(0, 0, 0, 0);
+        
+                // Match log using custom date parser
+                const log = myLogs.find(l => {
+                    const parsed = parseLogDate(l.date);
+                    return parsed && 
+                           parsed.getFullYear() === year && 
+                           parsed.getMonth() === month && 
+                           parsed.getDate() === day;
+                });
+        
+                const isSelected = filterDateString && (
+                    new Date(filterDateString).getFullYear() === year &&
+                    new Date(filterDateString).getMonth() === month &&
+                    new Date(filterDateString).getDate() === day
+                );
+        
+                // Determine Highlight Styles
+                let statusStyle = '';
+                let dotColor = '';
+        
+                if (log) {
+                    const status = (log.punctualityStatus || log.status || log.type || '').toLowerCase();
+                    const isRedColor = log.statusColor === 'red';
+        
+                    if (status === 'absent' || isRedColor) {
+                        // Red Highlight: ABSENT
+                        statusStyle = 'bg-rose-500/20 text-rose-300 border border-rose-500/50 font-bold';
+                        dotColor = 'bg-rose-400';
+                    } else if (status === 'mc' || status === 'off' || status === 'leave') {
+                        // Yellow Highlight: MC / Off Day
+                        statusStyle = 'bg-amber-500/20 text-amber-300 border border-amber-500/50 font-bold';
+                        dotColor = 'bg-amber-400';
+                    } else {
+                        // Green Highlight: Attended / On Time / Late
+                        statusStyle = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-bold';
+                        dotColor = 'bg-emerald-400';
+                    }
+                } else if (dateObj < today) {
+                    // Red Highlight: Unlogged Past Days
+                    statusStyle = 'bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold';
+                    dotColor = 'bg-rose-400';
+                } else {
+                    // Unhighlighted: Today or Future dates
+                    statusStyle = 'hover:bg-slate-800 text-slate-300 font-medium';
+                }
+        
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.onclick = () => selectDate(dateObj.toISOString());
+        
+                const selectionRing = isSelected ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-900 scale-105 z-10' : '';
+        
+                button.className = `h-9 w-9 mx-auto rounded-full text-xs flex flex-col items-center justify-center transition active:scale-95 relative ${statusStyle} ${selectionRing}`;
+        
+                button.innerHTML = `
+                    <span>${day}</span>
+                    ${dotColor && !isSelected ? `<span class="w-1 h-1 rounded-full ${dotColor} absolute bottom-1"></span>` : ''}
+                `;
+        
+                grid.appendChild(button);
+            }
+        }
+
+        function renderSelectedDateLogs() {
+            const container = document.getElementById('selectedDateLogs');
+            const label = document.getElementById('selectedDateLabel');
+        
+            if (!container) return;
+            container.innerHTML = '';
+        
+            const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
+        
+            let filtered = myLogs;
+        
+            if (filterDateString) {
+                const selObj = new Date(filterDateString);
+                const selYear = selObj.getFullYear();
+                const selMonth = selObj.getMonth();
+                const selDay = selObj.getDate();
+        
+                // Match log date using custom parseLogDate function
+                filtered = myLogs.filter(log => {
+                    const parsed = parseLogDate(log.date);
+                    return parsed && 
+                           parsed.getFullYear() === selYear && 
+                           parsed.getMonth() === selMonth && 
+                           parsed.getDate() === selDay;
+                });
+        
+                const formattedDateLabel = `${selDay.toString().padStart(2, '0')}/${(selMonth + 1).toString().padStart(2, '0')}/${selYear}`;
+                if (label) label.textContent = `Logs for ${formattedDateLabel}`;
+            } else {
+                if (label) label.textContent = `All Logged Shifts (${myLogs.length})`;
+            }
+        
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 py-4 text-center">No attendance recorded for this date.</p>`;
+                return;
+            }
+        
+            filtered.forEach(log => {
+                const row = document.createElement('div');
+                const isLate = log.punctualityStatus === 'LATE' || log.statusColor === 'red';
+                
+                const borderStyle = isLate 
+                    ? 'border-rose-500/50 bg-rose-950/20' 
+                    : 'border-emerald-500/50 bg-emerald-950/20';
+                
+                const badgeStyle = isLate 
+                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/40' 
+                    : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40';
+
+                // Location link builders
+                const inLoc = log.clockInLocation && log.clockInLocation.lat 
+                    ? `<a href="https://maps.google.com/?q=${log.clockInLocation.lat},${log.clockInLocation.lng}" target="_blank" class="text-[10px] text-indigo-400 hover:underline"><i class="fa-solid fa-location-dot"></i> In Map</a>` 
+                    : '';
+                const outLoc = log.clockOutLocation && log.clockOutLocation.lat 
+                    ? `<a href="https://maps.google.com/?q=${log.clockOutLocation.lat},${log.clockOutLocation.lng}" target="_blank" class="text-[10px] text-indigo-400 hover:underline"><i class="fa-solid fa-location-dot"></i> Out Map</a>` 
+                    : '';
+                
+                row.className = `p-3 border rounded-2xl flex items-center justify-between text-xs ${borderStyle}`;
+                row.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-200 font-semibold block">${log.date}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold border ${badgeStyle}">
+                                ${log.punctualityStatus || 'ON TIME'}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-[10px] text-slate-400">Duration: ${log.durationText || 'N/A'}</span>
+                            ${inLoc} ${outLoc}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 font-mono">
+                        <span class="px-2 py-1 rounded-lg bg-slate-900 text-slate-300 border border-slate-800">${log.clockIn}</span>
+                        <span class="text-slate-600">-</span>
+                        <span class="px-2 py-1 rounded-lg bg-slate-900 text-slate-300 border border-slate-800">${log.clockOut}</span>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function checkAutoAbsentStatus(user) {
+            if (!user) return;
+        
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const currentMinutes = (hours * 60) + minutes;
+            const time1100AM = 11 * 60; // 11:00 AM (660 mins)
+        
+            // Standardize date to YYYY-MM-DD to avoid locale mismatches
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const todayDateStr = `${year}-${month}-${day}`;
+        
+            // Debug log
+            console.log(`[Auto-Absent Check] Current time: ${hours}:${minutes} (${currentMinutes}m). Threshold: 11:00 AM (${time1100AM}m).`);
+        
+            if (currentMinutes <= time1100AM) {
+                console.log("[Auto-Absent Check] Skipped: It is not past 11:00 AM yet.");
+                return;
+            }
+        
+            const empEmail = (user.email || '').toLowerCase();
+        
+            // Check today's attendance_logs - if the user already has any record for
+            // today (clocked in, on leave, already marked absent, etc.), skip.
+            db.ref('attendance_logs').once('value')
+                .then((logsSnap) => {
+                    let alreadyLoggedToday = false;
+        
+                    if (logsSnap.exists()) {
+                        logsSnap.forEach((child) => {
+                            const log = child.val();
+                            const logEmail = (log.userEmail || '').toLowerCase();
+                            
+                            // Match user email and today's date
+                            if (logEmail === empEmail && log.date === todayDateStr) {
+                                alreadyLoggedToday = true;
+                            }
+                        });
+                    }
+        
+                    if (alreadyLoggedToday) {
+                        console.log("[Auto-Absent Check] Attendance or absent record already exists for today.");
+                        return;
+                    }
+        
+                    // 3. Push ABSENT Log to Database
+                    console.log("[Auto-Absent Check] Writing ABSENT status to database...");
+                    const newLogRef = db.ref('attendance_logs').push();
+                    
+                    return newLogRef.set({
+                        id: newLogRef.key,
+                        empName: user.displayName || user.email.split('@')[0],
+                        empId: (user.uid || '').substring(0, 8).toUpperCase(),
+                        userEmail: empEmail,
+                        date: todayDateStr,
+                        clockIn: '--:--',
+                        clockOut: '--:--',
+                        durationMs: 0,
+                        durationText: '0h 0m',
+                        punctualityStatus: 'ABSENT',
+                        statusColor: 'red',
+                        autoGenerated: true,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP
+                    });
+                })
+                // Inside checkAutoAbsentStatus()...
+                .then(() => {
+                    console.log("[Auto-Absent Check] ABSENT record successfully stored in Firebase.");
+                    if (typeof showToast === 'function') {
+                        showToast("You have been marked ABSENT for today (past 11:00 AM).", "error");
+                    }
+                
+                    // --- ADD THIS: Re-fetch or re-render your calendar UI ---
+                    if (typeof renderCalendar === 'function') {
+                        renderCalendar(); 
+                    } else if (typeof fetchAttendanceLogs === 'function') {
+                        fetchAttendanceLogs();
+                    }
+                })
+                .catch((error) => {
+                    console.error("[Auto-Absent Check] Database Write Error:", error);
+                });
+        }
+        
+        // Render Current User Attendance Only
+        function renderAttendanceUI() {
+            renderCalendarGrid();
+            renderSelectedDateLogs();
+        }
+
+        // Pre-defined Flavor List matching physical paper sheet
+        const flavorItems = ['Cheese', 'Korean', 'Garlic', 'Furikake', 'Togarashi', 'Coleslaw'];
+        
+        // Render Inventory Form Rows with Auto-Calculation Listeners
+        function initFlavorInventoryRows() {
+            const tbody = document.getElementById('flavorInventoryRows');
+            if (!tbody) return;
+        
+            tbody.innerHTML = '';
+            flavorItems.forEach(item => {
+                const isColeslaw = item.toLowerCase() === 'coleslaw';
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-900/40 transition';
+                
+                row.innerHTML = `
+                    <td class="p-3 font-medium text-slate-200">${item}</td>
+                    
+                    <!-- Prev Stock -->
+                    <td class="p-2">
+                        <input type="number" data-item="${item}" data-col="prevStock" placeholder="0" 
+                            ${isColeslaw ? 'disabled class="w-full bg-slate-950/50 opacity-30 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-slate-600 cursor-not-allowed"' : 'class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"'} 
+                            oninput="calculateSold('${item}')">
+                    </td>
+        
+                    <!-- New Stock -->
+                    <td class="p-2">
+                        <input type="number" data-item="${item}" data-col="newStock" placeholder="0" 
+                            class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500" 
+                            oninput="calculateSold('${item}')">
+                    </td>
+        
+                    <!-- SOLD (Auto-Calculated Readonly Input) -->
+                    <td class="p-2">
+                        <input type="number" data-item="${item}" data-col="sold" placeholder="0" readonly 
+                            class="w-full bg-slate-950 border border-emerald-500/40 rounded-lg p-1.5 text-center text-xs font-bold text-emerald-400 focus:outline-none cursor-not-allowed">
+                    </td>
+        
+                    <!-- Promo Free -->
+                    <td class="p-2">
+                        <input type="number" data-item="${item}" data-col="promoFree" placeholder="0" 
+                            ${isColeslaw ? 'disabled class="w-full bg-slate-950/50 opacity-30 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-slate-600 cursor-not-allowed"' : 'class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500"'} 
+                            oninput="calculateSold('${item}')">
+                    </td>
+        
+                    <!-- Balance -->
+                    <td class="p-2">
+                        <input type="number" data-item="${item}" data-col="balance" placeholder="0" 
+                            class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-center text-xs text-white focus:outline-none focus:border-emerald-500" 
+                            oninput="calculateSold('${item}')">
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Auto-Calculation Logic
+        function calculateSold(item) {
+            const prevStock = parseFloat(document.querySelector(`input[data-item="${item}"][data-col="prevStock"]`)?.value) || 0;
+            const newStock = parseFloat(document.querySelector(`input[data-item="${item}"][data-col="newStock"]`)?.value) || 0;
+            const promoFree = parseFloat(document.querySelector(`input[data-item="${item}"][data-col="promoFree"]`)?.value) || 0;
+            const balance = parseFloat(document.querySelector(`input[data-item="${item}"][data-col="balance"]`)?.value) || 0;
+        
+            const soldInput = document.querySelector(`input[data-item="${item}"][data-col="sold"]`);
+            if (!soldInput) return;
+        
+            let sold = 0;
+        
+            if (item.toLowerCase() === 'coleslaw') {
+                // Coleslaw Formula: (New Stock) - (Balance)
+                sold = newStock - balance;
+            } else {
+                // Standard Flavor Formula: ((Prev Stock) + (New Stock)) - ((Promo Free) + (Balance))
+                sold = (prevStock + newStock) - (promoFree + balance);
+            }
+        
+            // Set auto calculated value
+            soldInput.value = sold;
+        
+            // Trigger Live Grand Total Recalculation
+            if (typeof calculateTotalDailySales === 'function') {
+                calculateTotalDailySales();
+            }
+        }
+
+        // Unit Prices & Pricing Rules Constants
+        const PRICING = {
+            AYAM_PER_PC: 4.50,          // 1 Bag = 20 pcs * RM4.50 = RM90.00
+            BAG_PCS: 20,
+            MINYAK_MASAK_PACK: 5.00,    // RM5.00 / pack
+            CKG_CUP: 2.00,              // Cheese, Korean, Garlic = RM2.00 / cup
+            TF_CUP: 3.00,               // Furikake, Togarashi = RM3.00 / cup
+            COLESLAW_SINGLE: 3.50,      // 1 Cup Coleslaw = RM3.50
+            COLESLAW_PAIR: 6.50,        // 2 Cups Coleslaw Combo = RM6.50
+            PROMO_10PCS: 53.90          // Promo 10 Pcs Ayam = RM53.90 / promo
+        };
+        
+        // 1. Calculate Flavor Sales Subtotals
+        function getFlavorSalesSubtotals() {
+            // CKG Total (Cheese, Korean, Garlic)
+            const ckgItems = ['Cheese', 'Korean', 'Garlic'];
+            let ckgSoldTotal = 0;
+            ckgItems.forEach(item => {
+                ckgSoldTotal += parseFloat(document.querySelector(`input[data-item="${item}"][data-col="sold"]`)?.value || 0);
+            });
+            const ckgTotalSale = ckgSoldTotal * PRICING.CKG_CUP;
+        
+            // T&F Total (Furikake, Togarashi)
+            const tfItems = ['Furikake', 'Togarashi'];
+            let tfSoldTotal = 0;
+            tfItems.forEach(item => {
+                tfSoldTotal += parseFloat(document.querySelector(`input[data-item="${item}"][data-col="sold"]`)?.value || 0);
+            });
+            const tfTotalSale = tfSoldTotal * PRICING.TF_CUP;
+        
+            // Coleslaw Combo Pricing Calculation (RM6.50 per 2 cups + RM3.50 for remainder)
+            const coleslawSold = parseFloat(document.querySelector(`input[data-item="Coleslaw"][data-col="sold"]`)?.value || 0);
+            const coleslawPairs = Math.floor(coleslawSold / 2);
+            const coleslawSingles = coleslawSold % 2;
+            const coleslawTotalSale = (coleslawPairs * PRICING.COLESLAW_PAIR) + (coleslawSingles * PRICING.COLESLAW_SINGLE);
+        
+            return { ckgTotalSale, tfTotalSale, coleslawTotalSale };
+        }
+        
+        // 2. Main Grand Total Calculation Function
+        function calculateTotalDailySales() {
+            // --- A. Base Chicken Revenue ---
+            const bagInput = document.getElementById('salesJumlahBag')?.value || '';
+            const bagsCount = parseFloat(bagInput.match(/\d+/)?.[0] || 0);
+            const chickenSales = bagsCount * PRICING.BAG_PCS * PRICING.AYAM_PER_PC;
+        
+            // --- B. Platform Revenue ---
+            const misi = parseFloat(document.getElementById('salesMisi')?.value || 0);
+            const lalamove = parseFloat(document.getElementById('salesLalamove')?.value || 0);
+            
+            // Parse FoodPanda value even if entered with quantity e.g. "178.75 (4)"
+            const fpRaw = document.getElementById('salesFoodPanda')?.value || '0';
+            const foodPanda = parseFloat(fpRaw.match(/[\d.]+/)?.[0] || 0);
+        
+            const grabFood = parseFloat(document.getElementById('salesGrabFood')?.value || 0);
+            const shopeeFood = parseFloat(document.getElementById('salesShopeeFood')?.value || 0);
+        
+            // --- C. Expenses & Deductions ---
+            const gas = parseFloat(document.getElementById('expGas')?.value || 0);
+            const ais = parseFloat(document.getElementById('expAis')?.value || 0);
+            const beliBarang = parseFloat(document.getElementById('expBeliBarang')?.value || 0);
+            const minyakKenderaan = parseFloat(document.getElementById('expMinyakKenderaan')?.value || 0);
+            const dobi = parseFloat(document.getElementById('expDobi')?.value || 0);
+        
+            // Minyak Masak (Packs * RM5.00)
+            const minyakMasakPacks = parseFloat(document.getElementById('expMinyakMasak')?.value || 0);
+            const minyakMasakExpense = minyakMasakPacks * PRICING.MINYAK_MASAK_PACK;
+        
+            // Staff Meal (2 pcs chicken per staff @ RM4.50/pc = RM9.00 per staff)
+            const staffMealInput = document.getElementById('expStaffMeal')?.value || '';
+            const staffCount = (staffMealInput.match(/\d+/g) || []).length; 
+            const staffMealExpense = staffCount * (2 * PRICING.AYAM_PER_PC);
+        
+            // --- D. Chicken Losses & Quality Deductions (pcs * RM4.50) ---
+            const ayamTakHabisPcs = parseFloat(document.getElementById('wasteAyamTakHabis')?.value || 0);
+            const ayamBusukPcs = parseFloat(document.getElementById('wasteAyamBusuk')?.value || 0);
+            const ayamShortPcs = parseFloat(document.getElementById('wasteAyamShort')?.value || 0);
+            const reviewPcs = parseFloat(document.getElementById('qReview')?.value || 0);
+        
+            const lossDeductions = (ayamTakHabisPcs + ayamBusukPcs + ayamShortPcs + reviewPcs) * PRICING.AYAM_PER_PC;
+            const loyalKadDeduction = parseFloat(document.getElementById('qLoyalKad')?.value || 0);
+        
+            const totalExpenses = gas + ais + beliBarang + minyakKenderaan + dobi + minyakMasakExpense + staffMealExpense + lossDeductions + loyalKadDeduction;
+        
+            // --- E. Flavor Inventory Sales ---
+            const { ckgTotalSale, tfTotalSale, coleslawTotalSale } = getFlavorSalesSubtotals();
+        
+            // --- F. Promo Sales ---
+            const promo10PcsCount = parseFloat(document.getElementById('qPromo10Pcs')?.value || 0);
+            const promoSales = promo10PcsCount * PRICING.PROMO_10PCS;
+        
+            // --- GRAND TOTAL FORMULA ---
+            const grandTotal = (chickenSales + misi + lalamove + foodPanda + grabFood + shopeeFood)
+                - totalExpenses
+                + ckgTotalSale + tfTotalSale + coleslawTotalSale
+                + promoSales;
+        
+            // Update Live Display
+            const displayEl = document.getElementById('totalDailySalesDisplay');
+            if (displayEl) {
+                displayEl.textContent = `RM ${grandTotal.toFixed(2)}`;
+            }
+        
+            return grandTotal;
+        }
+        
+        // 3. Attach Event Listeners for Live Updates across the whole form
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('dailySalesForm');
+            if (form) {
+                form.addEventListener('input', calculateTotalDailySales);
+            }
+            
+            initPWAEngine();
+        });
+        
+        // Call on DOM Load
+        document.addEventListener('DOMContentLoaded', initFlavorInventoryRows);
+        
+        function handleSalesSubmit(e) {
+            e.preventDefault();
+
+            const user = auth.currentUser;
+            if (!user) {
+                showToast("Please login first.", "error");
+                return;
+            }
+
+            const empEmail = (user.email || currentUserEmail || '').toLowerCase();
+            const now = new Date();
+
+            // 1. ABSENT GUARD RULE: Check if staff is marked ABSENT today
+            const todayLog = attendanceLogs.find(log => {
+                const parsedDate = parseLogDate(log.date);
+                const isUserMatch = (log.userEmail || '').toLowerCase() === empEmail;
+                const isTodayMatch = parsedDate && 
+                    parsedDate.getFullYear() === now.getFullYear() && 
+                    parsedDate.getMonth() === now.getMonth() && 
+                    parsedDate.getDate() === now.getDate();
+                return isUserMatch && isTodayMatch;
+            });
+
+            if (todayLog) {
+                const status = (todayLog.punctualityStatus || todayLog.status || '').toLowerCase();
+                const isRedStatus = todayLog.statusColor === 'red';
+
+                if (status === 'absent' || isRedStatus) {
+                    showToast("Access Denied: You are marked ABSENT today and cannot submit daily sales.", "error");
+                    return; // Block submission completely
+                }
+            }
+
+            // 2. Gather Flavor Table Data
+            const inventoryData = {};
+            flavorItems.forEach(item => {
+                inventoryData[item] = {
+                    prevStock: Number(document.querySelector(`input[data-item="${item}"][data-col="prevStock"]`)?.value || 0),
+                    newStock: Number(document.querySelector(`input[data-item="${item}"][data-col="newStock"]`)?.value || 0),
+                    sold: Number(document.querySelector(`input[data-item="${item}"][data-col="sold"]`)?.value || 0),
+                    promoFree: Number(document.querySelector(`input[data-item="${item}"][data-col="promoFree"]`)?.value || 0),
+                    balance: Number(document.querySelector(`input[data-item="${item}"][data-col="balance"]`)?.value || 0),
+                };
+            });
+
+            // 3. Build Payload
+            const salesReportPayload = {
+                submittedBy: user.displayName || user.email.split('@')[0],
+                userEmail: empEmail,
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+
+                // Total Sales Amount
+                totalDailySales: typeof calculateTotalDailySales === 'function' ? calculateTotalDailySales() : 0,
+
+                // General Info
+                cawangan: document.getElementById('salesCawangan').value,
+                date: document.getElementById('salesDate').value,
+                jumlahBag: document.getElementById('salesJumlahBag').value,
+                pettyCash: parseFloat(document.getElementById('salesPettyCash').value || 0),
+                salesCash: parseFloat(document.getElementById('salesSalesCash').value || 0),
+
+                // Platform Sales
+                platforms: {
+                    misi: parseFloat(document.getElementById('salesMisi').value || 0),
+                    lalamove: parseFloat(document.getElementById('salesLalamove').value || 0),
+                    foodPanda: document.getElementById('salesFoodPanda').value,
+                    grabFood: parseFloat(document.getElementById('salesGrabFood').value || 0),
+                    shopeeFood: parseFloat(document.getElementById('salesShopeeFood').value || 0),
+                },
+
+                // Operational Expenses
+                expenses: {
+                    gas: parseFloat(document.getElementById('expGas').value || 0),
+                    ais: parseFloat(document.getElementById('expAis').value || 0),
+                    beliBarang: parseFloat(document.getElementById('expBeliBarang').value || 0),
+                    minyakKenderaan: parseFloat(document.getElementById('expMinyakKenderaan').value || 0),
+                    dobi: parseFloat(document.getElementById('expDobi').value || 0),
+                    minyakMasak: document.getElementById('expMinyakMasak').value,
+                    staffMeal: document.getElementById('expStaffMeal').value,
+                },
+
+                // Wastage & QC
+                qualityAndWastage: {
+                    ayamTakHabis: document.getElementById('wasteAyamTakHabis').value,
+                    ayamBusuk: document.getElementById('wasteAyamBusuk').value,
+                    ayamShort: document.getElementById('wasteAyamShort').value,
+                    review: document.getElementById('qReview').value,
+                    loyalKad: document.getElementById('qLoyalKad').value,
+                    promo10Pcs: document.getElementById('qPromo10Pcs').value,
+                },
+
+                catatan: document.getElementById('salesCatatan').value,
+                inventoryTracker: inventoryData
+            };
+
+            // 4. Push Record to Firebase
+            db.ref('sales_updates').push(salesReportPayload).then(() => {
+                showToast("Daily sales report submitted successfully!");
+                document.getElementById('dailySalesForm').reset();
+                initFlavorInventoryRows();
+                
+                const displayEl = document.getElementById('totalDailySalesDisplay');
+                if (displayEl) displayEl.textContent = 'RM 0.00';
+            }).catch(err => {
+                showToast(err.message, "error");
+            });
+        }
+
+        function lockSalesFormIfAbsent() {
+            const now = new Date();
+            const submitBtn = document.querySelector('#dailySalesForm button[type="submit"]');
+            if (!submitBtn) return;
+
+            const todayLog = attendanceLogs.find(log => {
+                const parsedDate = parseLogDate(log.date);
+                return (log.userEmail || '').toLowerCase() === currentUserEmail &&
+                    parsedDate && 
+                    parsedDate.getFullYear() === now.getFullYear() && 
+                    parsedDate.getMonth() === now.getMonth() && 
+                    parsedDate.getDate() === now.getDate();
+            });
+
+            if (todayLog) {
+                const status = (todayLog.punctualityStatus || todayLog.status || '').toLowerCase();
+                if (status === 'absent' || todayLog.statusColor === 'red') {
+                    submitBtn.disabled = true;
+                    submitBtn.className = "px-6 py-3 rounded-xl bg-slate-800 text-slate-500 font-bold text-xs cursor-not-allowed border border-slate-700";
+                    submitBtn.innerText = "Submission Disabled (Marked Absent)";
+                    return;
+                }
+            }
+
+            // Re-enable if not absent
+            submitBtn.disabled = false;
+            submitBtn.className = "px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-950/50 active:scale-95 flex items-center gap-2";
+            submitBtn.innerText = "Submit Daily Report";
+        }
+
+        function renderSalesTable() {
+            const tbody = document.getElementById('salesTableBody');
+            if (!tbody) return; // No sales-history table in this view - nothing to render
+            tbody.innerHTML = '';
+
+            if (salesLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-500 text-xs">No sales entries logged yet.</td></tr>`;
+            } else {
+                salesLogs.forEach(s => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-800/40 transition-colors';
+                    row.innerHTML = `
+                        <td class="py-3.5 px-6 text-slate-300 font-medium">${s.date}</td>
+                        <td class="py-3.5 px-6 text-indigo-400 font-semibold">${s.submittedBy}</td>
+                        <td class="py-3.5 px-6 text-emerald-400 font-mono font-bold">RM ${parseFloat(s.amount).toFixed(2)}</td>
+                        <td class="py-3.5 px-6 text-slate-400">${s.notes}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        // Payslip PDF Export
+        function downloadPayslipPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const month = document.getElementById('payslipMonth').value;
+            const year = document.getElementById('payslipYear').value;
+            const user = auth.currentUser;
+
+            doc.setFontSize(20);
+            doc.text("OFFICIAL SALARY PAYSLIP", 105, 20, null, null, "center");
+            
+            doc.setFontSize(10);
+            doc.text(`Generated Date: ${new Date().toLocaleDateString()}`, 105, 28, null, null, "center");
+
+            doc.setFontSize(12);
+            doc.text(`Employee Name: ${user ? (user.displayName || 'Staff Member') : 'Staff Member'}`, 20, 45);
+            doc.text(`Email Address: ${currentUserEmail}`, 20, 53);
+            doc.text(`Pay Period: ${month} ${year}`, 20, 61);
+
+            doc.line(20, 68, 190, 68);
+
+            doc.setFontSize(11);
+            doc.text("Earnings Description", 20, 78);
+            doc.text("Amount (MYR)", 150, 78);
+            
+            doc.setFontSize(10);
+            doc.text("Basic Salary", 20, 88);
+            doc.text("RM 2,800.00", 150, 88);
+            
+            doc.text("Allowance / Overtime", 20, 96);
+            doc.text("RM 350.00", 150, 96);
+
+            doc.line(20, 104, 190, 104);
+
+            doc.setFont("helvetica", "bold");
+            doc.text("Total Net Salary Payable:", 20, 114);
+            doc.text("RM 3,150.00", 150, 114);
+
+            doc.save(`Payslip_${month}_${year}.pdf`);
+            showToast("Payslip downloaded successfully!");
+        }
+
+        function exportCSV() {
+            const myLogs = attendanceLogs.filter(log => (log.userEmail || '').toLowerCase() === currentUserEmail);
+            if (myLogs.length === 0) return showToast('No data to export.', 'error');
+            let csv = "data:text/csv;charset=utf-8,Date,Clock In,Clock Out,Duration\n";
+            myLogs.forEach(l => { csv += `"${l.date}","${l.clockIn}","${l.clockOut}","${l.durationText}"\n`; });
+            const link = document.createElement('a');
+            link.setAttribute('href', encodeURI(csv));
+            link.setAttribute('download', `my_attendance_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Open Modal
+        function openLeaveModal() {
+            const modal = document.getElementById('leaveModal');
+            if (modal) modal.classList.remove('hidden');
+        }
+        
+        // Close Modal and Reset Form
+        function closeLeaveModal() {
+            const modal = document.getElementById('leaveModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.getElementById('leaveForm').reset();
+                document.getElementById('fileUploadContainer').classList.add('hidden');
+                
+                const fileNameDisplay = document.getElementById('fileNameDisplay');
+                fileNameDisplay.textContent = "Click or Drag & Drop file here";
+                fileNameDisplay.className = "text-xs text-slate-400 block font-medium";
+            }
+        }
+        
+        // Show/Hide File Upload Area based on Medical Leave Selection
+        function toggleFileUpload() {
+            const leaveType = document.getElementById('leaveType').value;
+            const uploadContainer = document.getElementById('fileUploadContainer');
+            const fileInput = document.getElementById('mcFile');
+        
+            if (leaveType === 'medical') {
+                uploadContainer.classList.remove('hidden');
+                fileInput.required = true;
+            } else {
+                uploadContainer.classList.add('hidden');
+                fileInput.required = false;
+                fileInput.value = '';
+            }
+        }
+        
+        // Display Selected File Name
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            const nameDisplay = document.getElementById('fileNameDisplay');
+            if (file) {
+                nameDisplay.textContent = `Selected: ${file.name}`;
+                nameDisplay.className = "text-xs text-emerald-400 block font-bold truncate";
+            } else {
+                nameDisplay.textContent = "Click or Drag & Drop file here";
+                nameDisplay.className = "text-xs text-slate-400 block font-medium";
+            }
+        }
+        
+        // Helper to convert File object to Base64 string
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = (error) => reject(error);
+            });
+        }
+        
+        async function handleLeaveSubmit(e) {
+            e.preventDefault();
+            const user = auth.currentUser;
+            if (!user) {
+                showToast("Please log in first.", "error");
+                return;
+            }
+        
+            const leaveType = document.getElementById('leaveType').value;
+            const startDate = document.getElementById('leaveStartDate').value;
+            const endDate = document.getElementById('leaveEndDate').value;
+            const reason = document.getElementById('leaveReason').value;
+            const fileInput = document.getElementById('mcFile');
+        
+            let mcBase64Data = null;
+            let fileName = null;
+        
+            // Handle Medical Certificate Conversion
+            if (leaveType === 'medical') {
+                const file = fileInput.files[0];
+                if (!file) {
+                    showToast("Please attach your Medical Certificate (MC).", "error");
+                    return;
+                }
+        
+                // Limit file size to 1MB max for Realtime DB performance
+                if (file.size > 1024 * 1024) {
+                    showToast("File size too large! Maximum allowed is 1MB.", "error");
+                    return;
+                }
+        
+                try {
+                    showToast("Processing MC document...", "info");
+                    mcBase64Data = await fileToBase64(file); // Converts image/PDF to data:image/... string
+                    fileName = file.name;
+                } catch (error) {
+                    console.error("Base64 Error:", error);
+                    showToast("Failed to process file.", "error");
+                    return;
+                }
+            }
+        
+            // Prepare Record
+            const leaveRequest = {
+                empName: user.email.split('@')[0],
+                empId: user.uid.substring(0, 8).toUpperCase(),
+                userEmail: currentUserEmail,
+                leaveType,
+                startDate,
+                endDate,
+                reason,
+                hasAttachment: leaveType === 'medical',
+                mcBase64: mcBase64Data,        // Stored directly as text string in Database
+                mcFileName: fileName,
+                status: 'PENDING',
+                appliedAt: firebase.database.ServerValue.TIMESTAMP
+            };
+        
+            // Push directly to Realtime DB
+            db.ref('leave_requests').push(leaveRequest).then(() => {
+                showToast("Leave application submitted successfully!");
+                closeLeaveModal();
+            }).catch(err => {
+                showToast(err.message, "error");
+            });
+        }
     </script>
 </body>
 </html>
