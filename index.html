@@ -280,7 +280,9 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
                                     <label class="block text-[11px] text-slate-400 mb-1">Cawangan (Branch)</label>
-                                    <input type="text" id="salesCawangan" required placeholder="e.g. PERMATA" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                    <select id="salesCawangan" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                        <option value="" disabled selected>Select Branch</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label class="block text-[11px] text-slate-400 mb-1">Tarikh (Date)</label>
@@ -887,11 +889,41 @@
                 listenAttendanceToday(user.email);
                 checkAutoAbsentStatus(user);
                 listenUserPayslips(user.email);
+                listenActiveBranches();
             } else {
                 portalView.classList.add('hidden');
                 loginView.classList.remove('hidden');
             }
         });
+
+        // Populates the Cawangan (Branch) dropdown on the Sales form with only
+        // branches currently marked ACTIVE in the admin-managed 'branches' node.
+        function listenActiveBranches() {
+            db.ref('branches').on('value', (snap) => {
+                const val = snap.val() || {};
+                const activeBranches = Object.keys(val)
+                    .map(key => ({ key, ...val[key] }))
+                    .filter(b => (b.status || '').toUpperCase() === 'ACTIVE' && b.name)
+                    .sort((a, b) => a.name.localeCompare(b.name));
+
+                const select = document.getElementById('salesCawangan');
+                if (!select) return;
+
+                const current = select.value;
+                select.innerHTML = '<option value="" disabled>Select Branch</option>' +
+                    activeBranches.map(b => `<option value="${escapeHtml(b.name)}">${escapeHtml(b.name)}</option>`).join('');
+
+                if (current && activeBranches.some(b => b.name === current)) {
+                    select.value = current;
+                } else {
+                    select.value = '';
+                }
+
+                if (activeBranches.length === 0) {
+                    select.innerHTML = '<option value="" disabled selected>No active branches available</option>';
+                }
+            });
+        }
 
         function listenUserLeaveRequests(empId) {
             db.ref('leave_requests')
