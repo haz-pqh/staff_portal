@@ -42,8 +42,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
-    <!-- jsPDF for Payslip PDF Downloads -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
         .btn-pwa-install {
@@ -448,48 +446,37 @@
                 </div>
             </section>
 
-            <!-- TAB 4: PAYSLIP DOWNLOADER -->
+            <!-- TAB 4: PAYSLIP VIEWER -->
             <section id="tab-payslip" class="tab-content space-y-6 hidden">
-                <div class="max-w-md mx-auto bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl text-center">
+                <div class="max-w-md mx-auto bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-xl">
                     <div class="w-14 h-14 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-2xl mx-auto flex items-center justify-center text-xl mb-4">
                         <i class="fa-solid fa-file-invoice-dollar"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-white mb-1">Download Payslip</h3>
-                    <p class="text-xs text-slate-400 mb-6">Select your payment period to export your official salary payslip as a PDF document.</p>
+                    <h3 class="text-lg font-bold text-white mb-1 text-center">My Payslips</h3>
+                    <p class="text-xs text-slate-400 mb-6 text-center">Payslips uploaded by admin appear here. View or download once your slip for the period is ready.</p>
 
-                    <div class="space-y-4 text-left mb-6">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Select Month</label>
-                            <select id="payslipMonth" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
-                                <option value="January">January</option>
-                                <option value="February">February</option>
-                                <option value="March">March</option>
-                                <option value="April">April</option>
-                                <option value="May">May</option>
-                                <option value="June">June</option>
-                                <option value="July">July</option>
-                                <option value="August" selected>August</option>
-                                <option value="September">September</option>
-                                <option value="October">October</option>
-                                <option value="November">November</option>
-                                <option value="December">December</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1.5">Select Year</label>
-                            <select id="payslipYear" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
-                                <option value="2026" selected>2026</option>
-                                <option value="2025">2025</option>
-                            </select>
-                        </div>
+                    <div id="payslipListContainer" class="space-y-3">
+                        <p class="text-xs text-slate-500 text-center py-6">Loading your payslips...</p>
                     </div>
-
-                    <button onclick="downloadPayslipPDF()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/25 transition active:scale-[0.98] flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-file-pdf"></i> Download PDF Payslip
-                    </button>
                 </div>
             </section>
+
+            <!-- Payslip Viewer Modal -->
+            <div id="payslipViewerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-5 shadow-2xl relative text-left">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+                        <h3 id="payslipViewerTitle" class="text-sm font-bold text-slate-100 uppercase tracking-wider">Payslip</h3>
+                        <button onclick="closePayslipViewer()" type="button" class="text-slate-400 hover:text-slate-200 text-lg font-bold px-2">&times;</button>
+                    </div>
+                    <div id="payslipViewerContent" class="max-h-[65vh] overflow-auto flex items-center justify-center"></div>
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button id="payslipViewerDownloadBtn" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-md shadow-emerald-900/40 flex items-center gap-2">
+                            <i class="fa-solid fa-download"></i> Download
+                        </button>
+                        <button onclick="closePayslipViewer()" type="button" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">Close</button>
+                    </div>
+                </div>
+            </div>
 
             <!-- TAB 5: USER PROFILE -->
             <section id="tab-profile" class="tab-content space-y-6 hidden">
@@ -892,6 +879,7 @@
                 initDatabaseListeners();
                 listenAttendanceToday(user.email);
                 checkAutoAbsentStatus(user);
+                listenUserPayslips(user.email);
             } else {
                 portalView.classList.add('hidden');
                 loginView.classList.remove('hidden');
@@ -1951,46 +1939,137 @@
             return;
         }
 
-        // Payslip PDF Export
-        function downloadPayslipPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const month = document.getElementById('payslipMonth').value;
-            const year = document.getElementById('payslipYear').value;
-            const user = auth.currentUser;
+        // ==================== PAYSLIPS (uploaded by admin, stored in Realtime Database) ====================
+        let myPayslips = [];
 
-            doc.setFontSize(20);
-            doc.text("OFFICIAL SALARY PAYSLIP", 105, 20, null, null, "center");
-            
-            doc.setFontSize(10);
-            doc.text(`Generated Date: ${new Date().toLocaleDateString()}`, 105, 28, null, null, "center");
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
-            doc.setFontSize(12);
-            doc.text(`Employee Name: ${user ? (user.displayName || 'Staff Member') : 'Staff Member'}`, 20, 45);
-            doc.text(`Email Address: ${currentUserEmail}`, 20, 53);
-            doc.text(`Pay Period: ${month} ${year}`, 20, 61);
+        // Formats a "YYYY-MM" pay period value into "Month YYYY" for display.
+        function formatPayslipPeriod(period) {
+            if (!period) return '--';
+            const [year, month] = period.split('-');
+            const d = new Date(Number(year), Number(month) - 1, 1);
+            if (isNaN(d.getTime())) return period;
+            return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
 
-            doc.line(20, 68, 190, 68);
+        function listenUserPayslips(email) {
+            const normalizedEmail = (email || '').toLowerCase();
+            db.ref('payslips')
+              .orderByChild('staffEmail')
+              .equalTo(normalizedEmail)
+              .on('value', (snapshot) => {
+                  const data = snapshot.val() || {};
+                  myPayslips = Object.keys(data)
+                      .map(key => ({ key, ...data[key] }))
+                      .sort((a, b) => (b.period || '').localeCompare(a.period || ''));
+                  renderPayslipList();
+              });
+        }
 
-            doc.setFontSize(11);
-            doc.text("Earnings Description", 20, 78);
-            doc.text("Amount (MYR)", 150, 78);
-            
-            doc.setFontSize(10);
-            doc.text("Basic Salary", 20, 88);
-            doc.text("RM 2,800.00", 150, 88);
-            
-            doc.text("Allowance / Overtime", 20, 96);
-            doc.text("RM 350.00", 150, 96);
+        function renderPayslipList() {
+            const container = document.getElementById('payslipListContainer');
+            if (!container) return;
 
-            doc.line(20, 104, 190, 104);
+            if (myPayslips.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 text-center py-6">No payslips uploaded yet. Check back once admin publishes your payslip.</p>';
+                return;
+            }
 
-            doc.setFont("helvetica", "bold");
-            doc.text("Total Net Salary Payable:", 20, 114);
-            doc.text("RM 3,150.00", 150, 114);
+            container.innerHTML = myPayslips.map(record => {
+                const amount = Number(record.amount);
+                const amountText = Number.isFinite(amount) ? `RM ${amount.toFixed(2)}` : '--';
+                return `
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <span class="text-sm font-bold text-white block">${escapeHtml(formatPayslipPeriod(record.period))}</span>
+                            <span class="text-[11px] text-slate-400 block">${escapeHtml((record.position || '').replace(/_/g, ' '))}</span>
+                            <span class="text-xs font-mono text-emerald-400">${amountText}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="viewMyPayslip('${record.key}')" class="px-3 py-2 rounded-xl bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/30 text-[11px] font-semibold transition">
+                                <i class="fa-solid fa-eye"></i> View
+                            </button>
+                            <button onclick="downloadMyPayslip('${record.key}')" class="px-3 py-2 rounded-xl bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 text-[11px] font-semibold transition">
+                                <i class="fa-solid fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
 
-            doc.save(`Payslip_${month}_${year}.pdf`);
-            showToast("Payslip downloaded successfully!");
+        function base64ToBlob(base64, contentType) {
+            const byteChars = atob(base64);
+            const byteNumbers = new Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) {
+                byteNumbers[i] = byteChars.charCodeAt(i);
+            }
+            return new Blob([new Uint8Array(byteNumbers)], { type: contentType || 'application/octet-stream' });
+        }
+
+        function viewMyPayslip(key) {
+            const record = myPayslips.find(r => r.key === key);
+            if (!record || !record.fileData) {
+                showToast('Payslip file is unavailable.', 'error');
+                return;
+            }
+
+            const modal = document.getElementById('payslipViewerModal');
+            const title = document.getElementById('payslipViewerTitle');
+            const content = document.getElementById('payslipViewerContent');
+            const downloadBtn = document.getElementById('payslipViewerDownloadBtn');
+            if (!modal || !content) return;
+
+            title.textContent = `Payslip — ${formatPayslipPeriod(record.period)}`;
+            content.innerHTML = '';
+            const dataUrl = `data:${record.contentType || 'application/octet-stream'};base64,${record.fileData}`;
+
+            if ((record.contentType || '').startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = dataUrl;
+                img.className = 'max-w-full max-h-[60vh] object-contain rounded-lg';
+                content.appendChild(img);
+            } else {
+                const iframe = document.createElement('iframe');
+                iframe.src = dataUrl;
+                iframe.className = 'w-full h-[60vh] rounded-xl border border-slate-800';
+                content.appendChild(iframe);
+            }
+
+            downloadBtn.onclick = () => downloadMyPayslip(key);
+            modal.classList.remove('hidden');
+        }
+
+        function closePayslipViewer() {
+            const modal = document.getElementById('payslipViewerModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function downloadMyPayslip(key) {
+            const record = myPayslips.find(r => r.key === key);
+            if (!record || !record.fileData) {
+                showToast('Payslip file is unavailable.', 'error');
+                return;
+            }
+
+            const blob = base64ToBlob(record.fileData, record.contentType);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = record.fileName || `Payslip_${record.period || ''}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('Payslip downloaded successfully!');
         }
 
         function exportCSV() {
