@@ -636,17 +636,10 @@
             const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
             document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(manifestBlob));
 
-            if ('serviceWorker' in navigator) {
-                const swCode = `
-                    self.addEventListener('install', (e) => self.skipWaiting());
-                    self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
-                    self.addEventListener('fetch', (e) => {
-                        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-                    });
-                `;
-                const swBlob = new Blob([swCode], { type: 'application/javascript' });
-                navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(err => console.log('SW reg error:', err));
-            }
+            // A service worker must be served from a real same-origin JavaScript URL;
+            // registering a Blob URL is not portable and breaks PWA/offline behavior.
+            // The install prompt remains available when the hosting environment satisfies
+            // the browser's PWA requirements. A real sw.js can be added at deployment time.
         }
 
         let activeLogKey = null;
@@ -674,7 +667,8 @@
                   activeLogData = null;
         
                   if (!snapshot.exists()) {
-                      setClockUIState('READY_TO_CLOCK_IN');
+                      activeLogData = null;
+                      renderClockUI();
                       return;
                   }
         
@@ -689,18 +683,18 @@
                   }
         
                   if (!activeLogData) {
-                      setClockUIState('READY_TO_CLOCK_IN');
+                      activeLogData = null;
+                      renderClockUI();
                       return;
                   }
         
                   // Case 1: Active shift (Clock-in exists, Clock-out empty)
                   if (activeLogData.clockIn && !activeLogData.clockOut) {
-                      setClockUIState('CLOCKED_IN', activeLogData);
-                      startRunningTimer(activeLogData.date, activeLogData.clockIn);
+                      renderClockUI();
                   } 
                   // Case 2: Shift completed for today
                   else if (activeLogData.clockIn && activeLogData.clockOut) {
-                      setClockUIState('SHIFT_COMPLETED', activeLogData);
+                      renderClockUI();
                   }
               });
         }
@@ -712,13 +706,8 @@
             const startTime = new Date(`${dateStr}T${clockInStr}:00`);
         
             function updateDisplay() {
-                // Clamp instead of bailing out: if this ever comes out negative
-                // (e.g. clock-in time set slightly ahead of the device's clock),
-                // returning early would freeze the timer forever, since every
-                // future tick would keep hitting the same early return. Clamping
-                // to 0 keeps it self-correcting - it just starts counting from
-                // 00:00:00 the moment the real elapsed time turns positive.
-                const diffMs = Math.max(0, new Date() - startTime);
+                const diffMs = new Date() - startTime;
+                if (diffMs < 0) return;
         
                 const hrs = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
                 const mins = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
@@ -732,66 +721,35 @@
             timerInterval = setInterval(updateDisplay, 1000);
         }
         
-        // 3. UI Toggle Helper - updates the button, status text/badge/banner and
-        // timer in place (never replaces clockBtn's innerHTML, so #btnText and
-        // its icon stay intact for future updates).
+        // 3. UI Toggle Helper
         function setClockUIState(state, log = null) {
             const clockBtn = document.getElementById('clockBtn');
-            const btnText = document.getElementById('btnText');
-            const btnIcon = clockBtn ? clockBtn.querySelector('i') : null;
             const statusText = document.getElementById('statusText');
-            const statusBadge = document.getElementById('statusBadge');
-            const statusBanner = document.getElementById('statusBanner');
             const timerEl = document.getElementById('sessionTimer');
         
             if (!clockBtn) return;
         
             if (state === 'CLOCKED_IN') {
                 clockBtn.disabled = false;
-                clockBtn.className = "w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-rose-600 hover:bg-rose-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2";
-                if (btnIcon) btnIcon.className = "fa-solid fa-square text-xs";
-                if (btnText) btnText.textContent = "Clock Out";
+                clockBtn.innerHTML = `<i class="fa-solid fa-square"></i><span>Clock Out</span>`;
+                clockBtn.className = "w-full py-3 px-4 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center justify-center gap-2";
                 if (statusText) {
-                    statusText.textContent = log.createdByAdmin
-                        ? "Clocked in by Admin • ON DUTY"
+                    statusText.textContent = log.createdByAdmin 
+                        ? "Clocked in by Admin • ON DUTY" 
                         : "ON DUTY • Shift active";
                 }
-                if (statusBanner) statusBanner.className = "p-6 rounded-2xl bg-lime-950/20 border border-lime-500/40 text-center mb-6 transition-all duration-300 shadow-lg shadow-lime-950/50";
-                if (statusBadge) {
-                    statusBadge.textContent = "ON DUTY";
-                    statusBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-lime-500/20 text-lime-400 border border-lime-500/40 animate-pulse";
-                }
-                if (timerEl) timerEl.className = "font-mono text-3xl font-bold text-lime-400 my-1";
             } else if (state === 'SHIFT_COMPLETED') {
                 clockBtn.disabled = true;
-                clockBtn.className = "w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-slate-700 cursor-not-allowed opacity-70 flex items-center justify-center gap-2";
-                if (btnIcon) btnIcon.className = "fa-solid fa-check text-xs";
-                if (btnText) btnText.textContent = "Shift Completed";
+                clockBtn.innerHTML = `<i class="fa-solid fa-check"></i><span>Shift Completed</span>`;
+                clockBtn.className = "w-full py-3 px-4 rounded-xl font-bold text-white bg-slate-700 cursor-not-allowed opacity-70 flex items-center justify-center gap-2";
                 if (statusText) statusText.textContent = `Shift ended at ${log.clockOut}`;
-                if (statusBanner) statusBanner.className = "p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6 transition-all duration-300";
-                if (statusBadge) {
-                    statusBadge.textContent = "COMPLETED";
-                    statusBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700";
-                }
-                if (timerEl) {
-                    timerEl.textContent = log.durationText || "00:00:00";
-                    timerEl.className = "font-mono text-3xl font-bold text-slate-400 my-1";
-                }
+                if (timerEl) timerEl.textContent = log.durationText || "00:00:00";
             } else {
                 clockBtn.disabled = false;
-                clockBtn.className = "w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2";
-                if (btnIcon) btnIcon.className = "fa-solid fa-play text-xs";
-                if (btnText) btnText.textContent = "Clock In";
+                clockBtn.innerHTML = `<i class="fa-solid fa-play"></i><span>Clock In</span>`;
+                clockBtn.className = "w-full py-3 px-4 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition flex items-center justify-center gap-2";
                 if (statusText) statusText.textContent = "OFF DUTY • Ready to clock in";
-                if (statusBanner) statusBanner.className = "p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6 transition-all duration-300";
-                if (statusBadge) {
-                    statusBadge.textContent = "OFFLINE";
-                    statusBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700";
-                }
-                if (timerEl) {
-                    timerEl.textContent = "00:00:00";
-                    timerEl.className = "font-mono text-3xl font-bold text-slate-500 my-1";
-                }
+                if (timerEl) timerEl.textContent = "00:00:00";
             }
         }
         
@@ -808,7 +766,7 @@
                 deferredPWAInstallPrompt.prompt();
                 deferredPWAInstallPrompt.userChoice.then((choice) => {
                     if (choice.outcome === 'accepted') {
-                        showToast('App installed on your device!', true);
+                        showToast('App installed on your device!', 'info');
                     }
                     deferredPWAInstallPrompt = null;
                     document.getElementById('pwa-install-btn').style.display = 'none';
@@ -843,6 +801,7 @@
 
         let attendanceLogs = [];
         let salesLogs = [];
+        let activeSession = null;
         let currentUserEmail = "";
 
         // Toast Helper
@@ -885,14 +844,6 @@
             if (user) {
                 currentUserEmail = (user.email || '').toLowerCase();
                 const empId = user.uid.substring(0, 8).toUpperCase();
-                listenUserLeaveRequests(empId);
-                // Initialize presence tracking for signed-in staff
-                setupPresenceSystem(user);
-                // Auto-check for absent status after 11:00 AM
-                checkAutoAbsentStatus(user);
-                
-                initDatabaseListeners();
-                
                 if (!ALLOWED_EMAILS.includes(currentUserEmail)) {
                     auth.signOut().then(() => {
                         showToast(`Access Denied: ${currentUserEmail} is not authorized.`, 'error');
@@ -932,10 +883,15 @@
                 }
 
                 // Default Date Input for Sales
-                document.getElementById('salesDate').value = new Date().toISOString().slice(0, 10);
+                const salesDateEl = document.getElementById('salesDate');
+                if (salesDateEl) salesDateEl.value = getISODateString(new Date());
 
+                // Initialize realtime systems only after authorization succeeds.
+                listenUserLeaveRequests(empId);
+                setupPresenceSystem(user);
                 initDatabaseListeners();
                 listenAttendanceToday(user.email);
+                checkAutoAbsentStatus(user);
             } else {
                 portalView.classList.add('hidden');
                 loginView.classList.remove('hidden');
@@ -1062,21 +1018,26 @@
 
         // Realtime DB Listeners
         function initDatabaseListeners() {
+            // Prevent duplicate realtime subscriptions when auth state changes.
+            if (window.__hemzalListenersInitialized) return;
+            window.__hemzalListenersInitialized = true;
+
             db.ref('attendance_logs').on('value', (snapshot) => {
                 const data = snapshot.val();
                 attendanceLogs = data ? Object.values(data).reverse() : [];
                 renderAttendanceUI();
                 lockSalesFormIfAbsent();
+
+                // Keep the clock terminal synchronized with the same attendance source.
+                if (auth.currentUser) listenAttendanceToday(auth.currentUser.email);
             });
 
-            // NOTE: sales reports are written to 'sales_updates' by handleSalesSubmit()
-            // (and read from the same node by the admin dashboard), so this listener
-            // must watch 'sales_updates' too - it previously watched an unused
-            // 'daily_sales' node and never received any data.
+            // Sales reports are stored under sales_updates. There is no sales table in the
+            // current staff UI, so retain the data for future/admin views without touching
+            // a nonexistent DOM element.
             db.ref('sales_updates').on('value', (snapshot) => {
                 const data = snapshot.val();
                 salesLogs = data ? Object.values(data).reverse() : [];
-                renderSalesTable();
             });
         }
 
@@ -1106,19 +1067,29 @@
             });
         }
         
-        // Live header clock - just ticks the time/date display in the top bar.
-        // Shift status (ON DUTY / OFF DUTY / shift timer / clock button) is
-        // driven entirely by listenAttendanceToday() + setClockUIState(),
-        // which reflect the real attendance_logs record - not this ticker.
+        // Clock Logic - header clock plus the current user's attendance timer.
         function updateClock() {
             const now = new Date();
+
             const liveTimeEl = document.getElementById('liveTime');
             const liveDateEl = document.getElementById('liveDate');
             if (liveTimeEl) liveTimeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             if (liveDateEl) liveDateEl.textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+            const timerEl = document.getElementById('sessionTimer');
+            if (!timerEl) return;
+
+            if (activeLogData && activeLogData.clockIn && !activeLogData.clockOut && activeLogData.date) {
+                const startTime = new Date(`${activeLogData.date}T${activeLogData.clockIn}:00`);
+                const elapsed = Math.max(0, now - startTime);
+                const hrs = String(Math.floor(elapsed / 3600000)).padStart(2, '0');
+                const mins = String(Math.floor((elapsed % 3600000) / 60000)).padStart(2, '0');
+                const secs = String(Math.floor((elapsed % 60000) / 1000)).padStart(2, '0');
+                timerEl.textContent = `${hrs}:${mins}:${secs}`;
+                timerEl.className = 'font-mono text-4xl font-black text-lime-400 drop-shadow-[0_0_12px_rgba(163,230,53,0.4)] my-1 tracking-wider';
+            }
         }
         setInterval(updateClock, 1000);
-        updateClock();
 
         // Store Location Target & Geofence Radius Config
         const STORE_LAT = 3.130718500000013;
@@ -1196,7 +1167,7 @@
             const location = await getCurrentLocation();
         
             // --- 100m GEOFENCE VALIDATION CHECK ---
-            if (!location || !location.lat || !location.lng) {
+            if (!location || location.lat === null || location.lng === null || location.status !== 'SUCCESS') {
                 showToast("Unable to acquire your location. Please turn on GPS.", "error");
                 return;
             }
@@ -1495,56 +1466,34 @@
 
         function checkAutoAbsentStatus(user) {
             if (!user) return;
-        
+
             const now = new Date();
-            const hours = now.getHours();
-            const minutes = now.getMinutes();
-            const currentMinutes = (hours * 60) + minutes;
-            const time1100AM = 11 * 60; // 11:00 AM (660 mins)
-        
-            // Standardize date to YYYY-MM-DD to avoid locale mismatches
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const todayDateStr = `${year}-${month}-${day}`;
-        
-            // Debug log
-            console.log(`[Auto-Absent Check] Current time: ${hours}:${minutes} (${currentMinutes}m). Threshold: 11:00 AM (${time1100AM}m).`);
-        
-            if (currentMinutes <= time1100AM) {
-                console.log("[Auto-Absent Check] Skipped: It is not past 11:00 AM yet.");
-                return;
-            }
-        
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const time1100AM = 11 * 60;
+            const todayDateStr = getISODateString(now);
             const empEmail = (user.email || '').toLowerCase();
-        
-            // Check today's attendance_logs - if the user already has any record for
-            // today (clocked in, on leave, already marked absent, etc.), skip.
+
+            if (currentMinutes <= time1100AM) return;
+
             db.ref('attendance_logs').once('value')
                 .then((logsSnap) => {
                     let alreadyLoggedToday = false;
-        
+                    let activeToday = false;
+
                     if (logsSnap.exists()) {
                         logsSnap.forEach((child) => {
-                            const log = child.val();
+                            const log = child.val() || {};
                             const logEmail = (log.userEmail || '').toLowerCase();
-                            
-                            // Match user email and today's date
                             if (logEmail === empEmail && log.date === todayDateStr) {
                                 alreadyLoggedToday = true;
+                                if (log.clockIn && !log.clockOut) activeToday = true;
                             }
                         });
                     }
-        
-                    if (alreadyLoggedToday) {
-                        console.log("[Auto-Absent Check] Attendance or absent record already exists for today.");
-                        return;
-                    }
-        
-                    // 3. Push ABSENT Log to Database
-                    console.log("[Auto-Absent Check] Writing ABSENT status to database...");
+
+                    if (alreadyLoggedToday || activeToday) return null;
+
                     const newLogRef = db.ref('attendance_logs').push();
-                    
                     return newLogRef.set({
                         id: newLogRef.key,
                         empName: user.displayName || user.email.split('@')[0],
@@ -1561,25 +1510,59 @@
                         createdAt: firebase.database.ServerValue.TIMESTAMP
                     });
                 })
-                // Inside checkAutoAbsentStatus()...
-                .then(() => {
-                    console.log("[Auto-Absent Check] ABSENT record successfully stored in Firebase.");
-                    if (typeof showToast === 'function') {
-                        showToast("You have been marked ABSENT for today (past 11:00 AM).", "error");
-                    }
-                
-                    // --- ADD THIS: Re-fetch or re-render your calendar UI ---
-                    if (typeof renderCalendar === 'function') {
-                        renderCalendar(); 
-                    } else if (typeof fetchAttendanceLogs === 'function') {
-                        fetchAttendanceLogs();
-                    }
+                .then((written) => {
+                    if (written) showToast('You have been marked ABSENT for today (past 11:00 AM).', 'error');
                 })
-                .catch((error) => {
-                    console.error("[Auto-Absent Check] Database Write Error:", error);
-                });
+                .catch((error) => console.error('[Auto-Absent Check] Database Write Error:', error));
         }
-        
+
+        function renderClockUI() {
+            const clockBtn = document.getElementById('clockBtn');
+            const btnText = document.getElementById('btnText');
+            const statusText = document.getElementById('statusText');
+            const statusBanner = document.getElementById('statusBanner');
+            const sessionTimer = document.getElementById('sessionTimer');
+            const statusBadge = document.getElementById('statusBadge');
+            if (!clockBtn || !btnText || !statusText || !statusBanner || !sessionTimer || !statusBadge) return;
+
+            if (activeLogData && activeLogData.clockIn && !activeLogData.clockOut) {
+                btnText.textContent = 'Clock Out';
+                clockBtn.disabled = false;
+                clockBtn.className = 'w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-rose-600 hover:bg-rose-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2';
+                statusText.textContent = activeLogData.createdByAdmin ? 'Clocked in by Admin • ON DUTY' : 'ON DUTY • Shift active';
+                statusBanner.className = 'p-6 rounded-2xl bg-lime-950/20 border border-lime-500/40 text-center mb-6 transition-all duration-300 shadow-lg shadow-lime-950/50';
+                statusBadge.textContent = 'ON DUTY';
+                statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-lime-500/20 text-lime-400 border border-lime-500/40 animate-pulse';
+            } else if (activeLogData && activeLogData.clockIn && activeLogData.clockOut) {
+                btnText.textContent = 'Shift Completed';
+                clockBtn.disabled = true;
+                clockBtn.className = 'w-full py-4 px-4 rounded-xl font-bold text-white bg-slate-700 cursor-not-allowed opacity-70 flex items-center justify-center gap-2';
+                statusText.textContent = `Shift ended at ${activeLogData.clockOut}`;
+                sessionTimer.textContent = activeLogData.durationText || '00:00:00';
+                statusBanner.className = 'p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6';
+                statusBadge.textContent = 'COMPLETED';
+                statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700';
+            } else if (activeLogData && activeLogData.punctualityStatus === 'ABSENT') {
+                btnText.textContent = 'Clock In';
+                clockBtn.disabled = false;
+                clockBtn.className = 'w-full py-4 px-4 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2';
+                statusText.textContent = 'ABSENT • Clock-in window has closed';
+                sessionTimer.textContent = '00:00:00';
+                statusBanner.className = 'p-6 rounded-2xl bg-rose-950/20 border border-rose-500/30 text-center mb-6';
+                statusBadge.textContent = 'ABSENT';
+                statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30';
+            } else {
+                btnText.textContent = 'Clock In';
+                clockBtn.disabled = false;
+                clockBtn.className = 'w-full py-4 px-4 rounded-xl font-bold text-white shadow-xl bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2';
+                statusText.textContent = 'OFF DUTY • Ready to clock in';
+                sessionTimer.textContent = '00:00:00';
+                statusBanner.className = 'p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center mb-6';
+                statusBadge.textContent = 'ONLINE';
+                statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+            }
+        }
+
         // Render Current User Attendance Only
         function renderAttendanceUI() {
             renderCalendarGrid();
@@ -1928,25 +1911,9 @@
         }
 
         function renderSalesTable() {
-            const tbody = document.getElementById('salesTableBody');
-            if (!tbody) return; // No sales-history table in this view - nothing to render
-            tbody.innerHTML = '';
-
-            if (salesLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-500 text-xs">No sales entries logged yet.</td></tr>`;
-            } else {
-                salesLogs.forEach(s => {
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-slate-800/40 transition-colors';
-                    row.innerHTML = `
-                        <td class="py-3.5 px-6 text-slate-300 font-medium">${s.date}</td>
-                        <td class="py-3.5 px-6 text-indigo-400 font-semibold">${s.submittedBy}</td>
-                        <td class="py-3.5 px-6 text-emerald-400 font-mono font-bold">RM ${parseFloat(s.amount).toFixed(2)}</td>
-                        <td class="py-3.5 px-6 text-slate-400">${s.notes}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            }
+            // The staff portal has no sales history table in its current UI.
+            // Keep this function for compatibility with older code paths.
+            return;
         }
 
         // Payslip PDF Export
@@ -2089,8 +2056,8 @@
                 }
         
                 // Limit file size to 1MB max for Realtime DB performance
-                if (file.size > 1024 * 1024) {
-                    showToast("File size too large! Maximum allowed is 1MB.", "error");
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast("File size too large! Maximum allowed is 5MB.", "error");
                     return;
                 }
         
