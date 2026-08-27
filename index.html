@@ -497,8 +497,21 @@
 
                     <h3 class="text-lg font-bold text-white" id="profileName">Staff Member</h3>
                     <p class="text-xs text-indigo-400 font-medium mt-0.5" id="profileEmail">user@company.com</p>
+                    <span id="profileStatusBadge" class="hidden inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider"></span>
 
                     <div class="mt-6 border-t border-slate-800 pt-6 space-y-3 text-left">
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800/60">
+                            <span class="text-xs text-slate-400">Phone Number</span>
+                            <span class="text-xs font-semibold text-slate-200" id="profilePhone">--</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800/60">
+                            <span class="text-xs text-slate-400">Position</span>
+                            <span class="text-xs font-semibold text-slate-200" id="profilePosition">--</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800/60">
+                            <span class="text-xs text-slate-400">Assigned Branch</span>
+                            <span class="text-xs font-semibold text-slate-200" id="profileBranch">--</span>
+                        </div>
                         <div class="flex justify-between items-center py-2 border-b border-slate-800/60">
                             <span class="text-xs text-slate-400">Account Type</span>
                             <span class="text-xs font-semibold text-slate-200">Google Verified</span>
@@ -508,6 +521,10 @@
                             <span class="text-xs font-semibold text-emerald-400">Authorized</span>
                         </div>
                     </div>
+
+                    <p id="profileIncompleteNotice" class="hidden mt-4 text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 text-left">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Your staff profile hasn't been set up by admin yet. Some details above may be missing.
+                    </p>
 
                     <button onclick="handleLogout()" class="w-full mt-8 py-3 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 font-semibold rounded-xl transition flex items-center justify-center gap-2 text-sm">
                         <i class="fa-solid fa-right-from-bracket"></i> Sign Out
@@ -890,6 +907,7 @@
                 checkAutoAbsentStatus(user);
                 listenUserPayslips(user.email);
                 listenActiveBranches();
+                listenMyStaffProfile(user.email);
             } else {
                 portalView.classList.add('hidden');
                 loginView.classList.remove('hidden');
@@ -923,6 +941,54 @@
                     select.innerHTML = '<option value="" disabled selected>No active branches available</option>';
                 }
             });
+        }
+
+        // Pulls the signed-in staff member's own record from the admin-managed
+        // 'staff' table and reflects it live on the Profile tab (name, phone,
+        // position, branch, status). Falls back to the Google account name/email
+        // if no staff record exists yet, and shows a notice in that case.
+        function listenMyStaffProfile(email) {
+            const normalizedEmail = (email || '').toLowerCase();
+            db.ref('staff')
+              .orderByChild('email')
+              .equalTo(normalizedEmail)
+              .on('value', (snapshot) => {
+                  const val = snapshot.val() || {};
+                  const records = Object.keys(val).map(key => ({ key, ...val[key] }));
+                  const staff = records[0] || null;
+
+                  const nameEl = document.getElementById('profileName');
+                  const phoneEl = document.getElementById('profilePhone');
+                  const positionEl = document.getElementById('profilePosition');
+                  const branchEl = document.getElementById('profileBranch');
+                  const statusBadge = document.getElementById('profileStatusBadge');
+                  const incompleteNotice = document.getElementById('profileIncompleteNotice');
+
+                  if (staff) {
+                      if (nameEl && staff.name) nameEl.textContent = staff.name;
+                      if (phoneEl) phoneEl.textContent = staff.phone || 'Not set';
+                      if (positionEl) positionEl.textContent = staff.position ? staff.position.replace(/_/g, ' ') : 'Not set';
+                      if (branchEl) branchEl.textContent = staff.branch || 'Unassigned';
+
+                      if (statusBadge) {
+                          const isActive = (staff.status || 'ACTIVE') === 'ACTIVE';
+                          statusBadge.textContent = staff.status || 'ACTIVE';
+                          statusBadge.className = `inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
+                              isActive
+                                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                                  : 'bg-rose-500/20 text-rose-400 border-rose-500/40'
+                          }`;
+                      }
+
+                      if (incompleteNotice) incompleteNotice.classList.add('hidden');
+                  } else {
+                      if (phoneEl) phoneEl.textContent = 'Not set';
+                      if (positionEl) positionEl.textContent = 'Not set';
+                      if (branchEl) branchEl.textContent = 'Unassigned';
+                      if (statusBadge) statusBadge.classList.add('hidden');
+                      if (incompleteNotice) incompleteNotice.classList.remove('hidden');
+                  }
+              });
         }
 
         function listenUserLeaveRequests(empId) {
