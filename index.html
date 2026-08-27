@@ -816,6 +816,7 @@
         let salesLogs = [];
         let activeSession = null;
         let currentUserEmail = "";
+        let myStaffProfile = null;
 
         // Toast Helper
         function showToast(message, type = 'info') {
@@ -956,6 +957,7 @@
                   const val = snapshot.val() || {};
                   const records = Object.keys(val).map(key => ({ key, ...val[key] }));
                   const staff = records[0] || null;
+                  myStaffProfile = staff;
 
                   const nameEl = document.getElementById('profileName');
                   const phoneEl = document.getElementById('profilePhone');
@@ -1947,7 +1949,7 @@
 
             // 3. Build Payload
             const salesReportPayload = {
-                submittedBy: user.displayName || user.email.split('@')[0],
+                submittedBy: (myStaffProfile && myStaffProfile.name) || user.displayName || user.email.split('@')[0],
                 userEmail: empEmail,
                 timestamp: firebase.database.ServerValue.TIMESTAMP,
 
